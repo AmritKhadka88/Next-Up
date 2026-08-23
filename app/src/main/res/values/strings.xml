@@ -2,10 +2,29 @@
 <resources>
     <string name="app_name">Next-Up</string>
     <string name="add_task">Add task</string>
-    <string name="quick_add_hint">e.g. h. Give $100 to X till 10 Sept with alarm</string>
+    <string name="quick_add_hint">e.g. high priority: Give $10 to X till 10 Sept with alarm</string>
     <string name="options">Options</string>
     <string name="voice_input">Voice input</string>
     <string name="send">Send</string>
     <string name="prev">‹</string>
     <string name="next">›</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="text_color">Text color</string>
+    <string name="background_color">Background color</string>
+    <string name="high_priority_color">High priority color</string>
+    <string name="medium_priority_color">Medium priority color</string>
+    <string name="normal_priority_color">Normal priority color</string>
+    <string name="highlight_color">Calendar highlight color</string>
+    <string name="font">Font</string>
+    <string name="reset_defaults">Reset to defaults</string>
+
+    <string name="task_title">Task title</string>
+    <string name="priority">Priority</string>
+    <string name="pick_date">Pick date</string>
+    <string name="pick_time">Pick time</string>
+    <string name="daily_task">Daily task</string>
+    <string name="set_alarm">Alarm</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
 </resources>
