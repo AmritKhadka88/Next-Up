@@ -71,8 +71,8 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
         // Sunday = 0 offset convention, matching DateTimeExtractor's weekday indexing
         val startOffset = firstDay.dayOfWeek.value % 7
 
-        val days = mutableListOf<CalendarDay?>()
-        repeat(startOffset) { days.add(null) }
+        val days = mutableListOf<CalendarDay>()
+        repeat(startOffset) { days.add(CalendarDay(date = null, hasTask = false, isInTillRange = false, isPlaceholder = true)) }
 
         for (dayNum in 1..daysInMonth) {
             val date = currentMonth.atDay(dayNum)
@@ -98,7 +98,8 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
 }
 
 data class CalendarDay(
-    val date: LocalDate,
+    val date: LocalDate?,
     val hasTask: Boolean,
-    val isInTillRange: Boolean
+    val isInTillRange: Boolean,
+    val isPlaceholder: Boolean = false
 )

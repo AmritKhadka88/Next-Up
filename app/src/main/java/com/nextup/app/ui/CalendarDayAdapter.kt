@@ -13,7 +13,7 @@ import java.time.LocalDate
 
 class CalendarDayAdapter(
     private val onDayClick: (CalendarDay) -> Unit
-) : ListAdapter<CalendarDay?, CalendarDayAdapter.DayViewHolder>(DIFF_CALLBACK) {
+) : ListAdapter<CalendarDay, CalendarDayAdapter.DayViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DayViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_calendar_day, parent, false)
@@ -27,11 +27,12 @@ class CalendarDayAdapter(
     class DayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val dayNumber: TextView = itemView.findViewById(R.id.textDayNumber)
 
-        fun bind(day: CalendarDay?, onDayClick: (CalendarDay) -> Unit) {
-            if (day == null) {
+        fun bind(day: CalendarDay, onDayClick: (CalendarDay) -> Unit) {
+            if (day.isPlaceholder || day.date == null) {
                 dayNumber.text = ""
                 itemView.setBackgroundColor(Color.TRANSPARENT)
                 itemView.isClickable = false
+                itemView.setOnClickListener(null)
                 return
             }
 
@@ -40,9 +41,9 @@ class CalendarDayAdapter(
 
             val today = LocalDate.now()
             when {
-                day.hasTask -> itemView.setBackgroundColor(Color.parseColor("#FFCDD2")) // task on this exact day
-                day.isInTillRange -> itemView.setBackgroundColor(Color.parseColor("#FFF9C4")) // within a TILL deadline range
-                day.date == today -> itemView.setBackgroundColor(Color.parseColor("#E3F2FD")) // today marker
+                day.hasTask -> itemView.setBackgroundColor(Color.parseColor("#FFCDD2"))
+                day.isInTillRange -> itemView.setBackgroundColor(Color.parseColor("#FFF9C4"))
+                day.date == today -> itemView.setBackgroundColor(Color.parseColor("#E3F2FD"))
                 else -> itemView.setBackgroundColor(Color.TRANSPARENT)
             }
 
@@ -51,9 +52,12 @@ class CalendarDayAdapter(
     }
 
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<CalendarDay?>() {
-            override fun areItemsTheSame(old: CalendarDay?, new: CalendarDay?) = old?.date == new?.date
-            override fun areContentsTheSame(old: CalendarDay?, new: CalendarDay?) = old == new
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<CalendarDay>() {
+            override fun areItemsTheSame(oldItem: CalendarDay, newItem: CalendarDay) =
+                oldItem.date == newItem.date && oldItem.isPlaceholder == newItem.isPlaceholder
+
+            override fun areContentsTheSame(oldItem: CalendarDay, newItem: CalendarDay) =
+                oldItem == newItem
         }
     }
 }
