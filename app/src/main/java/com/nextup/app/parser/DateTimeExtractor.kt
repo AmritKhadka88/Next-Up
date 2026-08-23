@@ -121,24 +121,32 @@ object DateTimeExtractor {
             }
         }
 
-        // "10 sept", "sept 10", "10th september"
-        val dateRegex = Regex("""\b(\d{1,2})(st|nd|rd|th)?\s+([a-z]{3,9})\b|\b([a-z]{3,9})\s+(\d{1,2})(st|nd|rd|th)?\b""")
+        // "10 sept", "sept 10", "10th september", plus optional trailing year: "10 sept 2030"
+        val dateRegex = Regex(
+            """\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})(?:\s+(\d{4}))?\b""" +
+                """|\b([a-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b"""
+        )
         val match = dateRegex.find(lower)
         if (match != null) {
             val day: Int
             val monthToken: String
+            val yearToken: String
             if (match.groupValues[1].isNotBlank()) {
                 day = match.groupValues[1].toInt()
-                monthToken = match.groupValues[3]
+                monthToken = match.groupValues[2]
+                yearToken = match.groupValues[3]
             } else {
-                day = match.groupValues[5].toInt()
                 monthToken = match.groupValues[4]
+                day = match.groupValues[5].toInt()
+                yearToken = match.groupValues[6]
             }
             val month = matchMonth(monthToken)
             if (month != null && day in 1..31) {
-                var year = today.year
+                val explicitYear = yearToken.toIntOrNull()
+                var year = explicitYear ?: today.year
                 var candidate = try { LocalDate.of(year, month, day) } catch (e: Exception) { null }
-                if (candidate != null && candidate.isBefore(today)) {
+                // Only roll forward to next year when no explicit year was given and the date has already passed
+                if (explicitYear == null && candidate != null && candidate.isBefore(today)) {
                     candidate = LocalDate.of(year + 1, month, day)
                 }
                 if (candidate != null) return ExtractedDate(candidate, match.value)

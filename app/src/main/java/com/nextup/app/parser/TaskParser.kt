@@ -51,7 +51,12 @@ object TaskParser {
     private val alarmRegex = Regex("""\s*,?\s*with alarm\b""", RegexOption.IGNORE_CASE)
     private val tillRegex = Regex("""\b(till|until)\b""", RegexOption.IGNORE_CASE)
     private val byRegex = Regex("""\bby\b""", RegexOption.IGNORE_CASE)
-    private val amountRegex = Regex("""\$\s?(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s?(dollars|bucks)""", RegexOption.IGNORE_CASE)
+    private val amountRegex = Regex(
+        """\$\s?(\d+(?:\.\d{1,2})?)""" +
+            """|(\d+(?:\.\d{1,2})?)\s?\$""" +
+            """|(\d+(?:\.\d{1,2})?)\s?(?:dollars|bucks)""",
+        RegexOption.IGNORE_CASE
+    )
     private val recipientRegex = Regex("""\bto\s+([A-Z][a-zA-Z]*|\p{Ll}+)\b""")
     private val priorityPrefixRegex = Regex("""^\s*(h|m)\.\s*""", RegexOption.IGNORE_CASE)
 
@@ -84,11 +89,14 @@ object TaskParser {
         // 4. amount
         val amountMatch = amountRegex.find(text)
         val amount = amountMatch?.let {
-            (it.groupValues[1].takeIf { g -> g.isNotBlank() } ?: it.groupValues[2]).toDoubleOrNull()
+            listOf(it.groupValues[1], it.groupValues[2], it.groupValues[3])
+                .firstOrNull { g -> g.isNotBlank() }
+                ?.toDoubleOrNull()
         }
         if (amountMatch != null) text = text.removeRange(amountMatch.range)
 
-        // 5. recipient ("to X") — only meaningful when there's an amount context
+        // 5. recipient ("to X") — only meaningful when there's an amount context, avoids
+        //    misfiring on ordinary phrases like "go to gym"
         val recipientMatch = if (amount != null) recipientRegex.find(text) else null
         val recipient = recipientMatch?.groupValues?.get(1)
         if (recipientMatch != null) text = text.removeRange(recipientMatch.range)
