@@ -53,9 +53,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_settings) {
-            startActivity(Intent(this, SettingsActivity::class.java))
-            return true
+        when (item.itemId) {
+            R.id.action_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                return true
+            }
+            R.id.action_filter -> {
+                FilterDialog.show(this)
+                return true
+            }
+            R.id.action_search -> {
+                SearchDialog.show(this)
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }

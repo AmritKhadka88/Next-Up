@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.nextup.app.R
 import com.nextup.app.data.TaskDatabase
 import com.nextup.app.settings.SettingsRepository
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class TaskListFragment : Fragment(R.layout.fragment_task_list) {
@@ -49,11 +49,22 @@ class TaskListFragment : Fragment(R.layout.fragment_task_list) {
         )
         recyclerView.adapter = adapter
 
-        val flow = if (isDaily) dao.getDailyTasks() else dao.getMainTasks()
+        val taskFlow = if (isDaily) dao.getDailyTasks() else dao.getMainTasks()
 
         lifecycleScope.launch {
-            flow.collectLatest { tasks ->
-                adapter.submitList(buildGroupedList(tasks))
+            combine(
+                taskFlow,
+                TaskFilterState.showCompleted,
+                TaskFilterState.allowedPriorities,
+                TaskFilterState.searchQuery
+            ) { tasks, showCompleted, allowedPriorities, query ->
+                tasks.filter { task ->
+                    (showCompleted || !task.isCompleted) &&
+                        task.priority in allowedPriorities &&
+                        (query.isBlank() || task.title.contains(query, ignoreCase = true))
+                }
+            }.collect { filtered ->
+                adapter.submitList(buildGroupedList(filtered))
             }
         }
     }

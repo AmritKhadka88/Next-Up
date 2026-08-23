@@ -127,15 +127,29 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
         loadTasksForSelectedDay()
     }
 
+    private var dayTaskJob: kotlinx.coroutines.Job? = null
+
     private fun loadTasksForSelectedDay() {
         selectedDayLabel.text = "Tasks on $selectedDate"
         val zone = ZoneId.systemDefault()
         val dayStart = selectedDate.atStartOfDay(zone).toInstant().toEpochMilli()
 
         val dao = TaskDatabase.getInstance(requireContext()).taskDao()
-        lifecycleScope.launch {
-            dao.getTasksForDay(dayStart).collectLatest { tasks ->
-                dayTaskAdapter.submitList(buildGroupedList(tasks))
+        dayTaskJob?.cancel()
+        dayTaskJob = lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                dao.getTasksForDay(dayStart),
+                TaskFilterState.showCompleted,
+                TaskFilterState.allowedPriorities,
+                TaskFilterState.searchQuery
+            ) { tasks, showCompleted, allowedPriorities, query ->
+                tasks.filter { task ->
+                    (showCompleted || !task.isCompleted) &&
+                        task.priority in allowedPriorities &&
+                        (query.isBlank() || task.title.contains(query, ignoreCase = true))
+                }
+            }.collect { filtered ->
+                dayTaskAdapter.submitList(buildGroupedList(filtered))
             }
         }
     }

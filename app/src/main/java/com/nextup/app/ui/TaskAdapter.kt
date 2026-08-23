@@ -1,5 +1,6 @@
 package com.nextup.app.ui
 
+import android.graphics.Paint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -60,18 +61,32 @@ class TaskAdapter(
             val settings = SettingsRepository(itemView.context)
 
             title.text = task.title
-            title.setTextColor(settings.textColor)
             title.typeface = settings.fontOption.toTypeface()
-
             subtitle.typeface = settings.fontOption.toTypeface()
 
             checkBox.setOnCheckedChangeListener(null)
             checkBox.isChecked = task.isCompleted
             checkBox.setOnCheckedChangeListener { _, checked -> onCompletedChanged(task, checked) }
 
+            // Single tap anywhere on the row toggles completion, same as tapping the checkbox directly.
+            itemView.setOnClickListener {
+                checkBox.isChecked = !checkBox.isChecked
+            }
+
             itemView.setOnLongClickListener {
                 onTaskLongClick(task)
                 true
+            }
+
+            if (task.isCompleted) {
+                // Dim + strike through completed tasks so they visually recede.
+                itemView.alpha = 0.5f
+                title.setTextColor(android.graphics.Color.GRAY)
+                title.paintFlags = title.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+            } else {
+                itemView.alpha = 1f
+                title.setTextColor(settings.textColor)
+                title.paintFlags = title.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
             }
 
             val dateStr = dateFormat.format(task.dueDate)
