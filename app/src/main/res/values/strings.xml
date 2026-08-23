@@ -27,4 +27,15 @@
     <string name="set_alarm">Alarm</string>
     <string name="delete">Delete</string>
     <string name="save">Save</string>
+
+    <string name="filter">Filter</string>
+    <string name="search">Search</string>
+
+    <string name="weekday_sun">S</string>
+    <string name="weekday_mon">M</string>
+    <string name="weekday_tue">T</string>
+    <string name="weekday_wed">W</string>
+    <string name="weekday_thu">T</string>
+    <string name="weekday_fri">F</string>
+    <string name="weekday_sat">S</string>
 </resources>
