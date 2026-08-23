@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Next-Up</string>
+    <string name="add_task">Add task</string>
+    <string name="quick_add_hint">e.g. h. Give $100 to X till 10 Sept with alarm</string>
+    <string name="options">Options</string>
+    <string name="voice_input">Voice input</string>
+    <string name="send">Send</string>
+    <string name="prev">‹</string>
+    <string name="next">›</string>
+</resources>
