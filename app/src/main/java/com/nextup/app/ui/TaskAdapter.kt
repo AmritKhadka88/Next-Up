@@ -1,6 +1,5 @@
 package com.nextup.app.ui
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,21 +11,41 @@ import androidx.recyclerview.widget.RecyclerView
 import com.nextup.app.R
 import com.nextup.app.data.Priority
 import com.nextup.app.data.Task
+import com.nextup.app.settings.SettingsRepository
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+private const val TYPE_TASK = 0
+private const val TYPE_DIVIDER = 1
+
 class TaskAdapter(
-    private val onCompletedChanged: (Task, Boolean) -> Unit
-) : ListAdapter<Task, TaskAdapter.TaskViewHolder>(DIFF_CALLBACK) {
+    private val onCompletedChanged: (Task, Boolean) -> Unit,
+    private val onTaskLongClick: (Task) -> Unit
+) : ListAdapter<TaskListItem, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_task, parent, false)
-        return TaskViewHolder(view)
+    override fun getItemViewType(position: Int): Int = when (getItem(position)) {
+        is TaskListItem.TaskRow -> TYPE_TASK
+        is TaskListItem.Divider -> TYPE_DIVIDER
     }
 
-    override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
-        holder.bind(getItem(position), onCompletedChanged)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == TYPE_DIVIDER) {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_priority_divider, parent, false)
+            DividerViewHolder(view)
+        } else {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_task, parent, false)
+            TaskViewHolder(view)
+        }
     }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val item = getItem(position)
+        if (holder is TaskViewHolder && item is TaskListItem.TaskRow) {
+            holder.bind(item.task, onCompletedChanged, onTaskLongClick)
+        }
+    }
+
+    class DividerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 
     class TaskViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val checkBox: CheckBox = itemView.findViewById(R.id.checkboxCompleted)
@@ -34,34 +53,51 @@ class TaskAdapter(
         private val subtitle: TextView = itemView.findViewById(R.id.textSubtitle)
         private val priorityIndicator: View = itemView.findViewById(R.id.viewPriorityIndicator)
 
-        private val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
+        private val dateFormat = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
         private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
 
-        fun bind(task: Task, onCompletedChanged: (Task, Boolean) -> Unit) {
+        fun bind(task: Task, onCompletedChanged: (Task, Boolean) -> Unit, onTaskLongClick: (Task) -> Unit) {
+            val settings = SettingsRepository(itemView.context)
+
             title.text = task.title
+            title.setTextColor(settings.textColor)
+            title.typeface = settings.fontOption.toTypeface()
+
+            subtitle.typeface = settings.fontOption.toTypeface()
+
             checkBox.setOnCheckedChangeListener(null)
             checkBox.isChecked = task.isCompleted
             checkBox.setOnCheckedChangeListener { _, checked -> onCompletedChanged(task, checked) }
 
+            itemView.setOnLongClickListener {
+                onTaskLongClick(task)
+                true
+            }
+
             val dateStr = dateFormat.format(task.dueDate)
             val timeStr = task.dueTime?.let { " • ${timeFormat.format(it)}" } ?: ""
             val alarmStr = if (task.hasAlarm) " ⏰" else ""
-            subtitle.text = "$dateStr$timeStr$alarmStr"
+            val dailyStr = if (task.isDailyTask) " 🔁" else ""
+            subtitle.text = "$dateStr$timeStr$alarmStr$dailyStr"
 
             priorityIndicator.setBackgroundColor(
                 when (task.priority) {
-                    Priority.HIGH -> Color.parseColor("#E53935")
-                    Priority.MEDIUM -> Color.parseColor("#FB8C00")
-                    Priority.NORMAL -> Color.parseColor("#BDBDBD")
+                    Priority.HIGH -> settings.highPriorityColor
+                    Priority.MEDIUM -> settings.mediumPriorityColor
+                    Priority.NORMAL -> settings.normalPriorityColor
                 }
             )
         }
     }
 
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<Task>() {
-            override fun areItemsTheSame(old: Task, new: Task) = old.id == new.id
-            override fun areContentsTheSame(old: Task, new: Task) = old == new
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<TaskListItem>() {
+            override fun areItemsTheSame(old: TaskListItem, new: TaskListItem): Boolean {
+                if (old is TaskListItem.Divider && new is TaskListItem.Divider) return true
+                if (old is TaskListItem.TaskRow && new is TaskListItem.TaskRow) return old.task.id == new.task.id
+                return false
+            }
+            override fun areContentsTheSame(old: TaskListItem, new: TaskListItem): Boolean = old == new
         }
     }
 }

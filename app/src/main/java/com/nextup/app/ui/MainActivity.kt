@@ -1,9 +1,11 @@
 package com.nextup.app.ui
 
+import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
@@ -11,6 +13,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.nextup.app.R
+import com.nextup.app.settings.SettingsActivity
+import com.nextup.app.settings.SettingsRepository
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +38,26 @@ class MainActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
             QuickAddBottomSheet().show(supportFragmentManager, "quick_add")
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-applying here so a color/font change in Settings reflects immediately on return.
+        val settings = SettingsRepository(this)
+        findViewById<android.view.View>(android.R.id.content).setBackgroundColor(settings.backgroundColor)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_settings) {
+            startActivity(Intent(this, SettingsActivity::class.java))
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     private class MainPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {

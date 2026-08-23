@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.nextup.app.R
 import com.nextup.app.data.Task
@@ -22,19 +23,49 @@ import java.util.Locale
 class CalendarFragment : Fragment(R.layout.fragment_calendar) {
 
     private var currentMonth: YearMonth = YearMonth.now()
-    private lateinit var adapter: CalendarDayAdapter
+    private var selectedDate: LocalDate = LocalDate.now()
+
+    private lateinit var gridAdapter: CalendarDayAdapter
+    private lateinit var dayTaskAdapter: TaskAdapter
     private lateinit var monthLabel: TextView
+    private lateinit var selectedDayLabel: TextView
     private var tasksInMonth: List<Task> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         monthLabel = view.findViewById(R.id.textMonthLabel)
-        val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewCalendar)
-        recyclerView.layoutManager = GridLayoutManager(requireContext(), 7)
+        selectedDayLabel = view.findViewById(R.id.textSelectedDayLabel)
 
-        adapter = CalendarDayAdapter { day -> onDayClicked(day) }
-        recyclerView.adapter = adapter
+        val gridRecycler = view.findViewById<RecyclerView>(R.id.recyclerViewCalendar)
+        gridRecycler.layoutManager = GridLayoutManager(requireContext(), 7)
+        gridRecycler.isNestedScrollingEnabled = false
+
+        val dayTaskRecycler = view.findViewById<RecyclerView>(R.id.recyclerViewDayTasks)
+        dayTaskRecycler.layoutManager = LinearLayoutManager(requireContext())
+        dayTaskRecycler.isNestedScrollingEnabled = false
+
+        val dao = TaskDatabase.getInstance(requireContext()).taskDao()
+
+        dayTaskAdapter = TaskAdapter(
+            onCompletedChanged = { task, completed ->
+                lifecycleScope.launch { dao.setCompleted(task.id, completed) }
+            },
+            onTaskLongClick = { task ->
+                EditTaskDialog.newInstance(task.id).show(parentFragmentManager, "edit_task")
+            }
+        )
+        dayTaskRecycler.adapter = dayTaskAdapter
+
+        gridAdapter = CalendarDayAdapter(
+            onDayClick = { day -> if (day.date != null) selectDay(day.date) },
+            onDayDoubleTap = { day ->
+                if (day.date != null) {
+                    QuickAddBottomSheet.newInstanceForDate(day.date).show(parentFragmentManager, "quick_add")
+                }
+            }
+        )
+        gridRecycler.adapter = gridAdapter
 
         view.findViewById<Button>(R.id.buttonPrevMonth).setOnClickListener {
             currentMonth = currentMonth.minusMonths(1)
@@ -46,6 +77,7 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
         }
 
         loadMonth()
+        loadTasksForSelectedDay()
     }
 
     private fun loadMonth() {
@@ -68,7 +100,6 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
         val zone = ZoneId.systemDefault()
         val firstDay = currentMonth.atDay(1)
         val daysInMonth = currentMonth.lengthOfMonth()
-        // Sunday = 0 offset convention, matching DateTimeExtractor's weekday indexing
         val startOffset = firstDay.dayOfWeek.value % 7
 
         val days = mutableListOf<CalendarDay>()
@@ -88,12 +119,25 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
             days.add(CalendarDay(date, hasTaskOnDay, isInTillRange))
         }
 
-        adapter.submitList(days)
+        gridAdapter.submitList(days)
     }
 
-    private fun onDayClicked(day: CalendarDay) {
-        // Hook point: open a bottom sheet or dialog listing tasks for this day.
-        // Left as an extension point — wire to TaskDao.getTasksForDay(day.date millis).
+    private fun selectDay(date: LocalDate) {
+        selectedDate = date
+        loadTasksForSelectedDay()
+    }
+
+    private fun loadTasksForSelectedDay() {
+        selectedDayLabel.text = "Tasks on $selectedDate"
+        val zone = ZoneId.systemDefault()
+        val dayStart = selectedDate.atStartOfDay(zone).toInstant().toEpochMilli()
+
+        val dao = TaskDatabase.getInstance(requireContext()).taskDao()
+        lifecycleScope.launch {
+            dao.getTasksForDay(dayStart).collectLatest { tasks ->
+                dayTaskAdapter.submitList(buildGroupedList(tasks))
+            }
+        }
     }
 }
 

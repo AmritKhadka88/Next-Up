@@ -1,15 +1,14 @@
 package com.nextup.app.ui
 
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.nextup.app.R
 import com.nextup.app.data.TaskDatabase
+import com.nextup.app.settings.SettingsRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -32,22 +31,29 @@ class TaskListFragment : Fragment(R.layout.fragment_task_list) {
         super.onViewCreated(view, savedInstanceState)
         isDaily = arguments?.getBoolean(ARG_DAILY) ?: false
 
+        val settings = SettingsRepository(requireContext())
+        view.setBackgroundColor(settings.backgroundColor)
+
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewTasks)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        adapter = TaskAdapter { task, completed ->
-            lifecycleScope.launch {
-                TaskDatabase.getInstance(requireContext()).taskDao().setCompleted(task.id, completed)
+        val dao = TaskDatabase.getInstance(requireContext()).taskDao()
+
+        adapter = TaskAdapter(
+            onCompletedChanged = { task, completed ->
+                lifecycleScope.launch { dao.setCompleted(task.id, completed) }
+            },
+            onTaskLongClick = { task ->
+                EditTaskDialog.newInstance(task.id).show(parentFragmentManager, "edit_task")
             }
-        }
+        )
         recyclerView.adapter = adapter
 
-        val dao = TaskDatabase.getInstance(requireContext()).taskDao()
         val flow = if (isDaily) dao.getDailyTasks() else dao.getMainTasks()
 
         lifecycleScope.launch {
             flow.collectLatest { tasks ->
-                adapter.submitList(tasks)
+                adapter.submitList(buildGroupedList(tasks))
             }
         }
     }
