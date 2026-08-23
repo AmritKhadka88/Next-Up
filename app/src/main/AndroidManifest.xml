@@ -16,6 +16,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.nextup.app.settings.SettingsActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>
