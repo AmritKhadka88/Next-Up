@@ -8,6 +8,10 @@
     android:paddingEnd="16dp"
     android:paddingTop="12dp"
     android:paddingBottom="12dp"
+    android:layout_marginStart="6dp"
+    android:layout_marginEnd="6dp"
+    android:layout_marginTop="3dp"
+    android:layout_marginBottom="3dp"
     android:gravity="center_vertical">
 
     <View
@@ -45,14 +49,30 @@
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/textDaysRemaining"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
+        android:orientation="vertical"
+        android:gravity="center"
         android:layout_marginStart="8dp"
-        android:minWidth="28dp"
-        android:gravity="center" />
+        android:minWidth="60dp">
+
+        <TextView
+            android:id="@+id/textDaysRemaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/textDaysCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="9sp"
+            android:textColor="#9E9E9E"
+            android:gravity="center" />
+
+    </LinearLayout>
 
 </LinearLayout>

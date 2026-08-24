@@ -6,12 +6,12 @@
 
     <ImageView
         android:id="@+id/widgetAddButton"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_gravity="center"
-        android:background="@drawable/bg_send_button"
-        android:src="@android:drawable/ic_input_add"
-        android:padding="12dp"
+        android:src="@drawable/ic_widget_add_button"
+        android:scaleType="fitCenter"
+        android:padding="1dp"
         android:contentDescription="@string/add_task" />
 
 </FrameLayout>
