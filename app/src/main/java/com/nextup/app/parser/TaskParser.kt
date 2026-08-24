@@ -65,35 +65,6 @@ data class ParsedTaskResult(
 
 object TaskParser {
 
-    private val alarmRegex = Regex("""\s*,?\s*with alarm\b""", RegexOption.IGNORE_CASE)
-    private val tillRegex = Regex("""\b(till|until)\b""", RegexOption.IGNORE_CASE)
-    private val byRegex = Regex("""\bby\b""", RegexOption.IGNORE_CASE)
-    private val amountRegex = Regex(
-        """\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)""" +
-            """|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s?\$""" +
-            """|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s?(?:dollars|bucks)""",
-        RegexOption.IGNORE_CASE
-    )
-    private val recipientRegex = Regex("""\bto\s+([A-Z][a-zA-Z]*|\p{Ll}+)\b""")
-
-    private val shortPriorityPrefixRegex = Regex("""^\s*(h|m|n)[.:]\s*""", RegexOption.IGNORE_CASE)
-    private val startPhraseRegex = Regex(
-        """^\s*(high|medium|normal|low)\s*(?:priority)?\s*(?:task)?\s*[:.\-]?\s*""",
-        RegexOption.IGNORE_CASE
-    )
-    private val anywherePhraseRegex = Regex(
-        """\b(high|medium|normal|low)\s*priority(?:\s*task)?\b""",
-        RegexOption.IGNORE_CASE
-    )
-
-    // NOTE: no trailing \b here — patterns ending in ":" never satisfy a following \b
-    // since ":" and whitespace are both non-word characters, so the old version silently
-    // never matched "daily:" / "d:" at all.
-    private val dailyRegex = Regex(
-        """\b(?:daily\s*:|d\s*:|do this daily|daily task|repeat daily|every day)""",
-        RegexOption.IGNORE_CASE
-    )
-
     private fun wordToPriority(word: String): Priority = when (word.lowercase()) {
         "high" -> Priority.HIGH
         "medium" -> Priority.MEDIUM
@@ -101,21 +72,30 @@ object TaskParser {
         else -> Priority.NORMAL
     }
 
-    fun parse(rawInput: String): ParsedTaskResult {
+    /** Finds the first match of [regex] whose matched text hasn't been excluded by the user. */
+    private fun findAccepted(regex: Regex, text: String, excluded: Set<String>): MatchResult? {
+        return regex.findAll(text).firstOrNull { LearnedWordsRepository.normalize(it.value) !in excluded }
+    }
+
+    /**
+     * @param excludedPhrases phrases the user has double-tap-taught the app to treat as plain
+     * text (from LearnedWordsRepository), so they're skipped here even though they'd otherwise match.
+     */
+    fun parse(rawInput: String, excludedPhrases: Set<String> = emptySet()): ParsedTaskResult {
         var text = rawInput.trim()
 
         // 1. priority
         var priority = Priority.NORMAL
         var explicitPriorityMatched = false
 
-        val startPhraseMatch = startPhraseRegex.find(text)
-        if (startPhraseMatch != null && startPhraseMatch.groupValues[1].isNotBlank()) {
+        val startPhraseMatch = findAccepted(ParserPatterns.startPhraseRegex, text, excludedPhrases)
+        if (startPhraseMatch != null && startPhraseMatch.range.first == 0 && startPhraseMatch.groupValues[1].isNotBlank()) {
             priority = wordToPriority(startPhraseMatch.groupValues[1])
             text = text.removeRange(startPhraseMatch.range)
             explicitPriorityMatched = true
         } else {
-            val shortMatch = shortPriorityPrefixRegex.find(text)
-            if (shortMatch != null) {
+            val shortMatch = findAccepted(ParserPatterns.shortPriorityPrefixRegex, text, excludedPhrases)
+            if (shortMatch != null && shortMatch.range.first == 0) {
                 priority = when (shortMatch.groupValues[1].lowercase()) {
                     "h" -> Priority.HIGH
                     "m" -> Priority.MEDIUM
@@ -127,18 +107,17 @@ object TaskParser {
         }
 
         // 2. daily task keywords
-        val dailyMatch = dailyRegex.find(text)
+        val dailyMatch = findAccepted(ParserPatterns.dailyRegex, text, excludedPhrases)
         val isDailyTask = dailyMatch != null
         if (dailyMatch != null) text = text.removeRange(dailyMatch.range)
 
         // 3. alarm keyword
-        val hasAlarm = alarmRegex.containsMatchIn(text)
-        text = alarmRegex.replace(text, "")
+        val alarmMatch = findAccepted(ParserPatterns.alarmRegex, text, excludedPhrases)
+        val hasAlarm = alarmMatch != null
+        if (alarmMatch != null) text = text.removeRange(alarmMatch.range)
 
-        // 4. amount — detected for the Task's data field, but deliberately NOT removed from
-        //    the visible title anymore. Silently stripping "$1000" out of what the user typed
-        //    made it look like the amount had vanished from the task.
-        val amountMatch = amountRegex.find(text)
+        // 4. amount
+        val amountMatch = findAccepted(ParserPatterns.amountRegex, text, excludedPhrases)
         val amount = amountMatch?.let {
             listOf(it.groupValues[1], it.groupValues[2], it.groupValues[3])
                 .firstOrNull { g -> g.isNotBlank() }
@@ -146,35 +125,37 @@ object TaskParser {
                 ?.toDoubleOrNull()
         }
 
-        // 5. recipient — detected for the Task's data field, but no longer removed from the
-        //    title either (same reasoning as amount: silently deleting "to Suman" made it
-        //    look like part of what was typed had disappeared).
-        val recipientMatch = if (amount != null) recipientRegex.find(text) else null
+        // 5. recipient — detected as data, no longer removed from the visible title
+        val recipientMatch = if (amount != null) findAccepted(ParserPatterns.recipientRegex, text, excludedPhrases) else null
         val recipient = recipientMatch?.groupValues?.get(1)
 
         // 6. ambiguous mid-sentence priority phrase
         var ambiguousPhrase: String? = null
         var ambiguousPriority: Priority? = null
         if (!explicitPriorityMatched) {
-            val midMatch = anywherePhraseRegex.find(text)
+            val midMatch = findAccepted(ParserPatterns.anywherePhraseRegex, text, excludedPhrases)
             if (midMatch != null) {
                 ambiguousPhrase = midMatch.value
                 ambiguousPriority = wordToPriority(midMatch.groupValues[1])
             }
         }
 
-        // 7. check for till/by keywords BEFORE deciding what they mean —
-        //    they only count as a deadline signal if a real date or time follows.
-        val hasTillWord = tillRegex.containsMatchIn(text)
-        val hasByWord = byRegex.containsMatchIn(text)
+        // 7. till/by presence (excluded occurrences don't count as a real signal)
+        val hasTillWord = findAccepted(ParserPatterns.tillRegex, text, excludedPhrases) != null
+        val hasByWord = findAccepted(ParserPatterns.byRegex, text, excludedPhrases) != null
 
         // 8. normalize number words, then extract date + time
         val normalized = DateTimeExtractor.normalizeNumberWords(text)
-        val extractedDate = DateTimeExtractor.extractDate(normalized)
-        val extractedTime = DateTimeExtractor.extractTime(normalized)
+        var extractedDate = DateTimeExtractor.extractDate(normalized)
+        if (extractedDate != null && LearnedWordsRepository.normalize(extractedDate.matchedText) in excludedPhrases) {
+            extractedDate = null
+        }
+        var extractedTime = DateTimeExtractor.extractTime(normalized)
+        if (extractedTime != null && LearnedWordsRepository.normalize(extractedTime.matchedText) in excludedPhrases) {
+            extractedTime = null
+        }
 
-        // 9. now decide the real deadline type: "till" only counts if a date/time was actually found,
-        //    otherwise it was just the ordinary word "till" and should stay as plain text.
+        // 9. decide the real deadline type: "till" only counts if a date/time was actually found
         val hasDateOrTime = extractedDate != null || extractedTime != null
         val deadlineType = when {
             hasTillWord && hasDateOrTime -> DeadlineType.TILL
@@ -184,9 +165,7 @@ object TaskParser {
 
         // 10. strip matched substrings from the title
         var title = text
-        // "by"/"on" are harmless filler words either way, safe to always strip
         title = Regex("""\b(by|on)\b""", RegexOption.IGNORE_CASE).replace(title, "")
-        // "till"/"until" only stripped when they genuinely meant something — otherwise keep as literal text
         if (deadlineType == DeadlineType.TILL) {
             title = Regex("""\b(till|until)\b""", RegexOption.IGNORE_CASE).replace(title, "")
         }
