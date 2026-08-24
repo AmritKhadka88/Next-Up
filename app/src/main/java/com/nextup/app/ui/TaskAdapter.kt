@@ -1,6 +1,8 @@
 package com.nextup.app.ui
 
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,7 +16,13 @@ import com.nextup.app.data.Priority
 import com.nextup.app.data.Task
 import com.nextup.app.settings.SettingsRepository
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.abs
 
 private const val TYPE_TASK = 0
 private const val TYPE_DIVIDER = 1
@@ -54,12 +62,14 @@ class TaskAdapter(
         private val subtitle: TextView = itemView.findViewById(R.id.textSubtitle)
         private val priorityIndicator: View = itemView.findViewById(R.id.viewPriorityIndicator)
         private val daysRemaining: TextView = itemView.findViewById(R.id.textDaysRemaining)
+        private val daysCaption: TextView = itemView.findViewById(R.id.textDaysCaption)
 
         private val dateFormat = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
         private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
 
         fun bind(task: Task, onCompletedChanged: (Task, Boolean) -> Unit, onTaskLongClick: (Task) -> Unit) {
             val settings = SettingsRepository(itemView.context)
+            val zone = ZoneId.systemDefault()
 
             title.text = task.title
             title.typeface = settings.fontOption.toTypeface()
@@ -69,7 +79,6 @@ class TaskAdapter(
             checkBox.isChecked = task.isCompleted
             checkBox.setOnCheckedChangeListener { _, checked -> onCompletedChanged(task, checked) }
 
-            // Single tap anywhere on the row toggles completion, same as tapping the checkbox directly.
             itemView.setOnClickListener {
                 checkBox.isChecked = !checkBox.isChecked
             }
@@ -80,9 +89,8 @@ class TaskAdapter(
             }
 
             if (task.isCompleted) {
-                // Dim + strike through completed tasks so they visually recede.
                 itemView.alpha = 0.5f
-                title.setTextColor(android.graphics.Color.GRAY)
+                title.setTextColor(Color.GRAY)
                 title.paintFlags = title.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
             } else {
                 itemView.alpha = 1f
@@ -96,27 +104,77 @@ class TaskAdapter(
             val dailyStr = if (task.isDailyTask) " 🔁" else ""
             subtitle.text = "$dateStr$timeStr$alarmStr$dailyStr"
 
-            val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(
-                java.time.LocalDate.now(),
-                java.time.Instant.ofEpochMilli(task.dueDate).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            )
-            daysRemaining.text = daysLeft.toString()
+            val dueLocalDate = Instant.ofEpochMilli(task.dueDate).atZone(zone).toLocalDate()
+            val daysLeft = ChronoUnit.DAYS.between(LocalDate.now(zone), dueLocalDate)
+
+            var numberText: String
+            var captionText: String
+            var isOverdue = false
+            var isTodayNoTime = false
+
+            when {
+                daysLeft != 0L -> {
+                    numberText = daysLeft.toString()
+                    captionText = "days remaining"
+                    isOverdue = daysLeft < 0
+                }
+                task.dueTime != null -> {
+                    // Today, and a specific time was given — count down in hours, then minutes.
+                    val dueDateTime = Instant.ofEpochMilli(task.dueTime).atZone(zone).toLocalDateTime()
+                    val now = LocalDateTime.now(zone)
+                    val hoursLeft = ChronoUnit.HOURS.between(now, dueDateTime)
+                    if (abs(hoursLeft) >= 1) {
+                        numberText = hoursLeft.toString()
+                        captionText = "hours remaining"
+                        isOverdue = hoursLeft < 0
+                    } else {
+                        val minutesLeft = ChronoUnit.MINUTES.between(now, dueDateTime)
+                        numberText = minutesLeft.toString()
+                        captionText = "minutes remaining"
+                        isOverdue = minutesLeft < 0
+                    }
+                }
+                else -> {
+                    // Today, no time attached — just say "Today" instead of a meaningless "0".
+                    numberText = "Today"
+                    captionText = ""
+                    isTodayNoTime = true
+                }
+            }
+
+            daysRemaining.text = numberText
+            daysCaption.text = captionText
+
+            val priorityColor = when (task.priority) {
+                Priority.HIGH -> settings.highPriorityColor
+                Priority.MEDIUM -> settings.mediumPriorityColor
+                Priority.NORMAL -> settings.normalPriorityColor
+            }
+
             daysRemaining.setTextColor(
                 when {
-                    task.isCompleted -> android.graphics.Color.GRAY
-                    daysLeft < 0 -> android.graphics.Color.parseColor("#E53935")
-                    daysLeft == 0L -> android.graphics.Color.parseColor("#FB8C00")
+                    task.isCompleted -> Color.GRAY
+                    isOverdue -> Color.parseColor("#E53935")
+                    isTodayNoTime -> priorityColor
                     else -> settings.textColor
                 }
             )
 
-            priorityIndicator.setBackgroundColor(
-                when (task.priority) {
-                    Priority.HIGH -> settings.highPriorityColor
-                    Priority.MEDIUM -> settings.mediumPriorityColor
-                    Priority.NORMAL -> settings.normalPriorityColor
+            // "Today, date-only" tasks get a priority-colored border around the whole row,
+            // since there's no time countdown to visually signal urgency instead.
+            if (isTodayNoTime && !task.isCompleted) {
+                val density = itemView.resources.displayMetrics.density
+                val border = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    setStroke((2 * density).toInt(), priorityColor)
+                    cornerRadius = 10 * density
                 }
-            )
+                itemView.background = border
+            } else {
+                itemView.background = null
+            }
+
+            priorityIndicator.setBackgroundColor(priorityColor)
         }
     }
 
