@@ -35,6 +35,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
     private var prefillDate: LocalDate? = null
     private lateinit var editTextRef: EditText
+    private lateinit var keywordHighlighter: com.nextup.app.parser.KeywordHighlighter
 
     // Delegates to the system's speech recognizer app (Google app, typically) — this avoids
     // needing our own RECORD_AUDIO runtime permission, since the recognition itself happens
@@ -100,7 +101,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
         }
 
-        com.nextup.app.parser.KeywordHighlighter(editText).attach()
+        keywordHighlighter = com.nextup.app.parser.KeywordHighlighter(editText)
+        keywordHighlighter.attach()
 
         sendButton.setOnClickListener {
             val input = editText.text.toString().trim()
@@ -126,7 +128,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun handleParsedInput(input: String, source: SourceType) {
-        val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
+        val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases() +
+            keywordHighlighter.getSessionExclusions()
         val rules = com.nextup.app.parser.RuleLibraryRepository(requireContext()).getRules()
         val fillers = com.nextup.app.parser.FillerPhraseRepository(requireContext()).getLearnedPhrases().map { it.phrase }
         val parsed = TaskParser.parse(input, excluded, rules, fillers)
@@ -162,7 +165,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
                 if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
                     val repo = com.nextup.app.parser.RuleLibraryRepository(requireContext())
                     repo.addRule(parts[0].trim(), parts[1].trim())
-                    val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
+                    val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases() +
+                        keywordHighlighter.getSessionExclusions()
                     val fillers = com.nextup.app.parser.FillerPhraseRepository(requireContext()).getLearnedPhrases().map { it.phrase }
                     val reparsed = TaskParser.parse(originalInput, excluded, repo.getRules(), fillers)
                     saveTask(reparsed, source)
