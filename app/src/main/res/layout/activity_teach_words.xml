@@ -43,6 +43,49 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="24dp" />
 
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ai_update_title"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ai_update_instructions"
+            android:textSize="13sp"
+            android:textColor="#757575"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/buttonExportLibrary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/export_library"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/editTextAiUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minLines="4"
+            android:gravity="top"
+            android:hint="@string/ai_update_hint"
+            android:inputType="textMultiLine" />
+
+        <Button
+            android:id="@+id/buttonImportAiUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/import_ai_update"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp" />
+
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginBottom="20dp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -70,6 +113,13 @@
             android:layout_height="wrap_content"
             android:textSize="13sp"
             android:layout_marginBottom="20dp" />
+
+        <Button
+            android:id="@+id/buttonCleanupNow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/cleanup_unused_now"
+            android:layout_marginBottom="12dp" />
 
         <Button
             android:id="@+id/buttonClearAll"
