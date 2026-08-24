@@ -67,4 +67,8 @@
     <string name="share">Share</string>
     <string name="save_share_file">Save / Share file</string>
     <string name="import_from_file">Import from file</string>
+
+    <string name="filler_title">Conversational filler phrases</string>
+    <string name="filler_instructions">Phrases stripped from the start of what you type, before anything else is parsed — so "I need to give coffee to Paarth" becomes "give coffee to Paarth" first. A sensible set is already built in; add more below, one per line.</string>
+    <string name="filler_hint">e.g.\nnote to file\nheads up</string>
 </resources>
