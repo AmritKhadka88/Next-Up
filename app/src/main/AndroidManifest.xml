@@ -20,6 +20,25 @@
             android:name="com.nextup.app.settings.SettingsActivity"
             android:exported="false" />
 
+        <activity
+            android:name="com.nextup.app.widget.QuickAddWidgetActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Transparent"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:windowSoftInputMode="stateVisible" />
+
+        <receiver
+            android:name="com.nextup.app.widget.QuickAddWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_add_info" />
+        </receiver>
+
     </application>
 
 </manifest>
