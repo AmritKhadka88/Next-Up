@@ -69,9 +69,9 @@ object TaskParser {
     private val tillRegex = Regex("""\b(till|until)\b""", RegexOption.IGNORE_CASE)
     private val byRegex = Regex("""\bby\b""", RegexOption.IGNORE_CASE)
     private val amountRegex = Regex(
-        """\$\s?(\d+(?:\.\d{1,2})?)""" +
-            """|(\d+(?:\.\d{1,2})?)\s?\$""" +
-            """|(\d+(?:\.\d{1,2})?)\s?(?:dollars|bucks)""",
+        """\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)""" +
+            """|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s?\$""" +
+            """|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s?(?:dollars|bucks)""",
         RegexOption.IGNORE_CASE
     )
     private val recipientRegex = Regex("""\bto\s+([A-Z][a-zA-Z]*|\p{Ll}+)\b""")
@@ -135,16 +135,19 @@ object TaskParser {
         val hasAlarm = alarmRegex.containsMatchIn(text)
         text = alarmRegex.replace(text, "")
 
-        // 4. amount
+        // 4. amount — detected for the Task's data field, but deliberately NOT removed from
+        //    the visible title anymore. Silently stripping "$1000" out of what the user typed
+        //    made it look like the amount had vanished from the task.
         val amountMatch = amountRegex.find(text)
         val amount = amountMatch?.let {
             listOf(it.groupValues[1], it.groupValues[2], it.groupValues[3])
                 .firstOrNull { g -> g.isNotBlank() }
+                ?.replace(",", "")
                 ?.toDoubleOrNull()
         }
-        if (amountMatch != null) text = text.removeRange(amountMatch.range)
 
-        // 5. recipient
+        // 5. recipient — still removed from the title, since "to Amrit" reads as redundant
+        //    once it's captured as structured data.
         val recipientMatch = if (amount != null) recipientRegex.find(text) else null
         val recipient = recipientMatch?.groupValues?.get(1)
         if (recipientMatch != null) text = text.removeRange(recipientMatch.range)
