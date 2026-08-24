@@ -128,7 +128,7 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
                     dayStartMillis in task.startHighlightDate!!..task.dueDate
             }
 
-            days.add(CalendarDay(date, hasTaskOnDay, isInTillRange, hasHighPriorityTask = hasHighPriorityTask))
+            days.add(CalendarDay(date, hasTaskOnDay, isInTillRange, hasHighPriorityTask = hasHighPriorityTask, isSelected = date == selectedDate))
         }
 
         gridAdapter.submitList(days)
@@ -136,6 +136,7 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
 
     private fun selectDay(date: LocalDate) {
         selectedDate = date
+        buildGrid()
         loadTasksForSelectedDay()
     }
 
@@ -172,5 +173,6 @@ data class CalendarDay(
     val hasTask: Boolean,
     val isInTillRange: Boolean,
     val isPlaceholder: Boolean = false,
-    val hasHighPriorityTask: Boolean = false
+    val hasHighPriorityTask: Boolean = false,
+    val isSelected: Boolean = false
 )

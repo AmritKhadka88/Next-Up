@@ -53,10 +53,14 @@ class CalendarDayAdapter(
             val today = LocalDate.now()
             val isToday = day.date == today
 
-            // TILL-range days get a soft full-cell tint; everything else stays clean/white
-            // so the dot and circle indicators read clearly instead of competing with a filled cell.
+            // Selected day gets a clear grey highlight so it's obvious which date the task
+            // list below belongs to. It takes visual priority over the softer TILL-range tint.
             itemView.setBackgroundColor(
-                if (day.isInTillRange) settings.highlightColor else Color.TRANSPARENT
+                when {
+                    day.isSelected -> Color.parseColor("#BDBDBD")
+                    day.isInTillRange -> settings.highlightColor
+                    else -> Color.TRANSPARENT
+                }
             )
 
             // The hand-drawn circle takes priority visually over the plain today-ring,
