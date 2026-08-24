@@ -23,6 +23,10 @@
             android:exported="false" />
 
         <activity
+            android:name="com.nextup.app.settings.WidgetSettingsActivity"
+            android:exported="false" />
+
+        <activity
             android:name="com.nextup.app.widget.QuickAddWidgetActivity"
             android:exported="false"
             android:theme="@style/Theme.Transparent"
