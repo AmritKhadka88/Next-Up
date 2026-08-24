@@ -169,7 +169,19 @@ object TaskParser {
         var extractedTime: ExtractedTime? = null
         var usedRulePhrase: String? = null
 
-        for (rule in rules) {
+        // Conflict resolution when multiple learned rules could match the same text.
+        // Priority order, most important first:
+        //   1. Longer/more specific phrases win over shorter, more generic ones
+        //      (e.g. "day after next payday" beats a bare "next" if both matched).
+        //   2. Rules you typed yourself beat ones that came from an AI-assisted import.
+        //   3. More frequently-used rules win as the final tiebreaker.
+        val orderedRules = rules.sortedWith(
+            compareByDescending<Rule> { it.phrase.length }
+                .thenBy { if (it.source == RuleSource.HUMAN) 0 else 1 }
+                .thenByDescending { it.useCount }
+        )
+
+        for (rule in orderedRules) {
             val idx = text.indexOf(rule.phrase, ignoreCase = true)
             if (idx < 0) continue
             val (ruleDate, ruleTime) = RuleLibraryRepository.resolveMeaning(rule.meaning)
