@@ -49,7 +49,10 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
 
         dayTaskAdapter = TaskAdapter(
             onCompletedChanged = { task, completed ->
-                lifecycleScope.launch { dao.setCompleted(task.id, completed) }
+                lifecycleScope.launch {
+                    dao.setCompleted(task.id, completed)
+                    com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
+                }
             },
             onTaskLongClick = { task ->
                 EditTaskDialog.newInstance(task.id).show(parentFragmentManager, "edit_task")

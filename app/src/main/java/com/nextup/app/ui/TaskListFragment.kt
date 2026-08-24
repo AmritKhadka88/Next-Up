@@ -41,7 +41,10 @@ class TaskListFragment : Fragment(R.layout.fragment_task_list) {
 
         adapter = TaskAdapter(
             onCompletedChanged = { task, completed ->
-                lifecycleScope.launch { dao.setCompleted(task.id, completed) }
+                lifecycleScope.launch {
+                    dao.setCompleted(task.id, completed)
+                    com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
+                }
             },
             onTaskLongClick = { task ->
                 EditTaskDialog.newInstance(task.id).show(parentFragmentManager, "edit_task")

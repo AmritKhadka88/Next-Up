@@ -126,6 +126,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
         lifecycleScope.launch {
             TaskDatabase.getInstance(requireContext()).taskDao().insert(task)
+            com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
             // TODO: if task.hasAlarm, schedule via AlarmManager here using task.dueTime/dueDate.
             dismiss()
         }

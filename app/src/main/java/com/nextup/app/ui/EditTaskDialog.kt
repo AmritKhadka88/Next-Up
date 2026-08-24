@@ -98,6 +98,7 @@ class EditTaskDialog : BottomSheetDialogFragment() {
             val current = task ?: return@setOnClickListener
             lifecycleScope.launch {
                 dao.delete(current)
+                com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
                 dismiss()
             }
         }
@@ -119,6 +120,7 @@ class EditTaskDialog : BottomSheetDialogFragment() {
 
             lifecycleScope.launch {
                 dao.update(updated)
+                com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
                 dismiss()
             }
         }

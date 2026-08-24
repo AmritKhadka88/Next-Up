@@ -53,6 +53,7 @@ class TaskAdapter(
         private val title: TextView = itemView.findViewById(R.id.textTitle)
         private val subtitle: TextView = itemView.findViewById(R.id.textSubtitle)
         private val priorityIndicator: View = itemView.findViewById(R.id.viewPriorityIndicator)
+        private val daysRemaining: TextView = itemView.findViewById(R.id.textDaysRemaining)
 
         private val dateFormat = SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault())
         private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -94,6 +95,20 @@ class TaskAdapter(
             val alarmStr = if (task.hasAlarm) " ⏰" else ""
             val dailyStr = if (task.isDailyTask) " 🔁" else ""
             subtitle.text = "$dateStr$timeStr$alarmStr$dailyStr"
+
+            val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(
+                java.time.LocalDate.now(),
+                java.time.Instant.ofEpochMilli(task.dueDate).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            )
+            daysRemaining.text = daysLeft.toString()
+            daysRemaining.setTextColor(
+                when {
+                    task.isCompleted -> android.graphics.Color.GRAY
+                    daysLeft < 0 -> android.graphics.Color.parseColor("#E53935")
+                    daysLeft == 0L -> android.graphics.Color.parseColor("#FB8C00")
+                    else -> settings.textColor
+                }
+            )
 
             priorityIndicator.setBackgroundColor(
                 when (task.priority) {
