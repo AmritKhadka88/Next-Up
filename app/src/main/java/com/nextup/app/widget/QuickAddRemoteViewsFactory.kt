@@ -1,7 +1,7 @@
 package com.nextup.app.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.util.TypedValue
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.nextup.app.R
@@ -17,7 +17,10 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-class QuickAddRemoteViewsFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
+class QuickAddRemoteViewsFactory(
+    private val context: Context,
+    private val widgetId: Int
+) : RemoteViewsService.RemoteViewsFactory {
 
     private var tasks: List<Task> = emptyList()
     private val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
@@ -29,7 +32,7 @@ class QuickAddRemoteViewsFactory(private val context: Context) : RemoteViewsServ
         val settings = SettingsRepository(context)
         val all = TaskDatabase.getInstance(context).taskDao().getUpcomingTasksSync()
 
-        tasks = when (settings.widgetTaskFilter) {
+        val filtered = when (settings.widgetTaskFilter) {
             WidgetTaskFilter.ALL_UPCOMING -> all
             WidgetTaskFilter.HIGH_PRIORITY_ONLY -> all.filter { it.priority == Priority.HIGH }
             WidgetTaskFilter.TODAY_ONLY -> {
@@ -39,6 +42,25 @@ class QuickAddRemoteViewsFactory(private val context: Context) : RemoteViewsServ
                 all.filter { it.dueDate in todayStart until tomorrowStart }
             }
         }
+
+        // Single-row widgets always show exactly one task (the very next upcoming one) —
+        // no point offering a scroll for something that's only one row tall anyway.
+        // Multi-row widgets show up to the user's configured count, still scrollable beyond that.
+        val rowCount = estimateRowCount()
+        tasks = if (rowCount <= 1) {
+            filtered.take(1)
+        } else {
+            filtered.take(settings.widgetTaskCount)
+        }
+    }
+
+    /** Estimates how many task rows currently fit in the widget's height, by asking
+     *  AppWidgetManager for this widget instance's current size. */
+    private fun estimateRowCount(): Int {
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return 2 // safe default if unknown
+        val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
+        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, ROW_HEIGHT_DP)
+        return (heightDp / ROW_HEIGHT_DP).coerceAtLeast(1)
     }
 
     override fun onDestroy() {
@@ -60,12 +82,20 @@ class QuickAddRemoteViewsFactory(private val context: Context) : RemoteViewsServ
         views.setTextViewText(R.id.widgetItemDaysRemaining, daysLeft.toString())
 
         val fontSize = settings.widgetFontSizeSp
-        views.setTextViewTextSize(R.id.widgetItemTitle, TypedValue.COMPLEX_UNIT_SP, fontSize)
-        views.setTextViewTextSize(R.id.widgetItemSubtitle, TypedValue.COMPLEX_UNIT_SP, (fontSize - 3f).coerceAtLeast(9f))
-        views.setTextViewTextSize(R.id.widgetItemDaysRemaining, TypedValue.COMPLEX_UNIT_SP, fontSize + 2f)
+        views.setTextViewTextSize(R.id.widgetItemTitle, android.util.TypedValue.COMPLEX_UNIT_SP, fontSize)
+        views.setTextViewTextSize(R.id.widgetItemSubtitle, android.util.TypedValue.COMPLEX_UNIT_SP, (fontSize - 3f).coerceAtLeast(9f))
+        views.setTextViewTextSize(R.id.widgetItemDaysRemaining, android.util.TypedValue.COMPLEX_UNIT_SP, fontSize + 2f)
 
         views.setTextColor(R.id.widgetItemTitle, settings.widgetFontColor)
         views.setTextColor(R.id.widgetItemSubtitle, settings.widgetFontColor)
+
+        // Priority accent dot for a bit more visual polish/aesthetics.
+        val priorityColor = when (task.priority) {
+            Priority.HIGH -> settings.highPriorityColor
+            Priority.MEDIUM -> settings.mediumPriorityColor
+            Priority.NORMAL -> settings.normalPriorityColor
+        }
+        views.setInt(R.id.widgetItemPriorityDot, "setColorFilter", priorityColor)
 
         return views
     }
@@ -74,4 +104,10 @@ class QuickAddRemoteViewsFactory(private val context: Context) : RemoteViewsServ
     override fun getViewTypeCount(): Int = 1
     override fun getItemId(position: Int): Long = tasks[position].id
     override fun hasStableIds(): Boolean = true
+
+    companion object {
+        // Must match the actual row height used in widget_task_item.xml for the row-count
+        // math to be accurate.
+        const val ROW_HEIGHT_DP = 56
+    }
 }
