@@ -75,5 +75,9 @@ class SettingsActivity : AppCompatActivity() {
             getSharedPreferences("nextup_settings", MODE_PRIVATE).edit().clear().apply()
             recreate()
         }
+
+        findViewById<Button>(R.id.buttonWidgetSettings).setOnClickListener {
+            startActivity(android.content.Intent(this, WidgetSettingsActivity::class.java))
+        }
     }
 }

@@ -14,6 +14,8 @@ enum class FontOption { DEFAULT, SERIF, SANS_SERIF, MONOSPACE;
     }
 }
 
+enum class WidgetTaskFilter { ALL_UPCOMING, HIGH_PRIORITY_ONLY, TODAY_ONLY }
+
 /**
  * Central place for all user-customizable appearance settings.
  * Backed by SharedPreferences so it persists across app restarts, on-device only.
@@ -51,6 +53,32 @@ class SettingsRepository(context: Context) {
         get() = FontOption.valueOf(prefs.getString(KEY_FONT, FontOption.DEFAULT.name) ?: FontOption.DEFAULT.name)
         set(value) = prefs.edit().putString(KEY_FONT, value.name).apply()
 
+    // --- Widget-specific appearance/content settings ---
+
+    var widgetTaskFilter: WidgetTaskFilter
+        get() = WidgetTaskFilter.valueOf(
+            prefs.getString(KEY_WIDGET_FILTER, WidgetTaskFilter.ALL_UPCOMING.name) ?: WidgetTaskFilter.ALL_UPCOMING.name
+        )
+        set(value) = prefs.edit().putString(KEY_WIDGET_FILTER, value.name).apply()
+
+    /** Font size in SP for widget task rows. */
+    var widgetFontSizeSp: Float
+        get() = prefs.getFloat(KEY_WIDGET_FONT_SIZE, 14f)
+        set(value) = prefs.edit().putFloat(KEY_WIDGET_FONT_SIZE, value).apply()
+
+    var widgetFontColor: Int
+        get() = prefs.getInt(KEY_WIDGET_FONT_COLOR, Color.parseColor("#212121"))
+        set(value) = prefs.edit().putInt(KEY_WIDGET_FONT_COLOR, value).apply()
+
+    var widgetBackgroundColor: Int
+        get() = prefs.getInt(KEY_WIDGET_BG_COLOR, Color.WHITE)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_BG_COLOR, value).apply()
+
+    /** 0 = fully transparent, 255 = fully opaque. */
+    var widgetBackgroundAlpha: Int
+        get() = prefs.getInt(KEY_WIDGET_BG_ALPHA, 230)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_BG_ALPHA, value.coerceIn(0, 255)).apply()
+
     companion object {
         private const val PREFS_NAME = "nextup_settings"
         private const val KEY_TEXT_COLOR = "text_color"
@@ -60,6 +88,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_NORMAL_COLOR = "normal_priority_color"
         private const val KEY_HIGHLIGHT_COLOR = "highlight_color"
         private const val KEY_FONT = "font_option"
+        private const val KEY_WIDGET_FILTER = "widget_task_filter"
+        private const val KEY_WIDGET_FONT_SIZE = "widget_font_size"
+        private const val KEY_WIDGET_FONT_COLOR = "widget_font_color"
+        private const val KEY_WIDGET_BG_COLOR = "widget_bg_color"
+        private const val KEY_WIDGET_BG_ALPHA = "widget_bg_alpha"
 
         /** A small curated palette for the color picker dialog — keeps the UI simple on mobile. */
         val PRESET_COLORS = listOf(
