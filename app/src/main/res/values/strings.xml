@@ -66,4 +66,5 @@
     <string name="copy_to_clipboard">Copy</string>
     <string name="share">Share</string>
     <string name="save_share_file">Save / Share file</string>
+    <string name="import_from_file">Import from file</string>
 </resources>
