@@ -79,5 +79,9 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.buttonWidgetSettings).setOnClickListener {
             startActivity(android.content.Intent(this, WidgetSettingsActivity::class.java))
         }
+
+        findViewById<Button>(R.id.buttonTeachWords).setOnClickListener {
+            startActivity(android.content.Intent(this, com.nextup.app.parser.TeachWordsActivity::class.java))
+        }
     }
 }
