@@ -95,9 +95,16 @@ object TaskParser {
     fun parse(
         rawInput: String,
         excludedPhrases: Set<String> = emptySet(),
-        rules: List<Rule> = emptyList()
+        rules: List<Rule> = emptyList(),
+        fillerPhrases: List<String> = emptyList()
     ): ParsedTaskResult {
-        var text = rawInput.trim()
+        // 0. strip conversational wrapper phrases first — "I need to give coffee to Paarth"
+        //    becomes "give coffee to Paarth" before anything else looks at the text, so a
+        //    filler like "I need to" never ends up sitting in the middle of the parsed title.
+        val allFillers = (FillerPhraseRepository.DEFAULT_FILLERS + fillerPhrases)
+            .distinct()
+            .sortedByDescending { it.length }
+        var text = FillerPhraseRepository.stripFillers(rawInput.trim(), allFillers)
 
         // 1. priority
         var priority = Priority.NORMAL

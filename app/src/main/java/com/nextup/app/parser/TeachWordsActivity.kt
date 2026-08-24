@@ -17,8 +17,10 @@ class TeachWordsActivity : AppCompatActivity() {
 
     private lateinit var ruleLibrary: RuleLibraryRepository
     private lateinit var learnedWords: LearnedWordsRepository
+    private lateinit var fillerPhrases: FillerPhraseRepository
     private lateinit var rulesListView: TextView
     private lateinit var excludedListView: TextView
+    private lateinit var fillerListView: TextView
 
     // Which target the next picked file should be imported into — set right before launching.
     private var pendingFileImportTarget: FileImportTarget = FileImportTarget.AI_UPDATE
@@ -63,8 +65,18 @@ class TeachWordsActivity : AppCompatActivity() {
 
         ruleLibrary = RuleLibraryRepository(this)
         learnedWords = LearnedWordsRepository(this)
+        fillerPhrases = FillerPhraseRepository(this)
         rulesListView = findViewById(R.id.textRulesList)
         excludedListView = findViewById(R.id.textExcludedList)
+        fillerListView = findViewById(R.id.textFillerList)
+
+        val fillerInput = findViewById<EditText>(R.id.editTextFillerPhrases)
+        findViewById<Button>(R.id.buttonImportFillers).setOnClickListener {
+            val count = fillerPhrases.importBulkText(fillerInput.text.toString())
+            Toast.makeText(this, "Learned $count filler phrase(s)", Toast.LENGTH_SHORT).show()
+            fillerInput.text.clear()
+            refreshLists()
+        }
 
         val bulkInput = findViewById<EditText>(R.id.editTextBulkRules)
         findViewById<Button>(R.id.buttonImportRules).setOnClickListener {
@@ -104,13 +116,15 @@ class TeachWordsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.buttonCleanupNow).setOnClickListener {
             val removedRules = ruleLibrary.pruneStale()
             val removedWords = learnedWords.pruneStale()
-            Toast.makeText(this, "Removed ${removedRules + removedWords} unused entry/entries (4+ months untouched)", Toast.LENGTH_SHORT).show()
+            val removedFillers = fillerPhrases.pruneStale()
+            Toast.makeText(this, "Removed ${removedRules + removedWords + removedFillers} unused entry/entries (4+ months untouched)", Toast.LENGTH_SHORT).show()
             refreshLists()
         }
 
         findViewById<Button>(R.id.buttonClearAll).setOnClickListener {
             ruleLibrary.clearAll()
             learnedWords.clearAll()
+            fillerPhrases.clearLearned()
             refreshLists()
         }
 
@@ -118,7 +132,9 @@ class TeachWordsActivity : AppCompatActivity() {
     }
 
     private fun showExportDialog() {
-        val exportText = ruleLibrary.exportAsText() + "\n# EXCLUDED WORDS (treated as plain text)\n" + learnedWords.exportAsText()
+        val exportText = ruleLibrary.exportAsText() +
+            "\n# EXCLUDED WORDS (treated as plain text)\n" + learnedWords.exportAsText() +
+            "\n# FILLER PHRASES (stripped from the start of what you type)\n" + fillerPhrases.exportAsText()
 
         val textView = TextView(this).apply {
             text = exportText
@@ -180,6 +196,19 @@ class TeachWordsActivity : AppCompatActivity() {
             getString(R.string.none_yet)
         } else {
             excluded.sortedByDescending { it.useCount }.joinToString("\n") { "${it.phrase} (${it.useCount}×)" }
+        }
+
+        val fillers = fillerPhrases.getLearnedPhrases()
+        fillerListView.text = buildString {
+            append("Built-in: ")
+            append(FillerPhraseRepository.DEFAULT_FILLERS.joinToString(", "))
+            if (fillers.isNotEmpty()) {
+                append("\n\nTaught:\n")
+                append(fillers.sortedByDescending { it.useCount }.joinToString("\n") {
+                    val tag = if (it.source == RuleSource.HUMAN) "human" else "ai"
+                    "${it.phrase}  (${it.useCount}× · $tag)"
+                })
+            }
         }
     }
 }
