@@ -127,13 +127,52 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
     private fun handleParsedInput(input: String, source: SourceType) {
         val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
-        val parsed = TaskParser.parse(input, excluded)
+        val rules = com.nextup.app.parser.RuleLibraryRepository(requireContext()).getRules()
+        val parsed = TaskParser.parse(input, excluded, rules)
 
-        if (parsed.ambiguousPriorityPhrase != null) {
+        if (parsed.possiblyMissingDateTime) {
+            showTeachPrompt(input, parsed, source)
+        } else if (parsed.ambiguousPriorityPhrase != null) {
             showAmbiguousPriorityDialog(parsed, source)
         } else {
             saveTask(parsed, source)
         }
+    }
+
+    /**
+     * The wording had temporal-sounding words ("now", "hour", "after", etc.) but nothing
+     * actually resolved to a date/time — this is the "ask the user" learning path: offer to
+     * teach a rule right here rather than silently saving a task that's probably missing
+     * the deadline the person meant to give it.
+     */
+    private fun showTeachPrompt(originalInput: String, parsed: ParsedTaskResult, source: SourceType) {
+        val ruleInput = android.widget.EditText(requireContext()).apply {
+            hint = "e.g. two days from now = today + 2"
+            setPadding(40, 24, 40, 24)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Couldn't find a date/time")
+            .setMessage("This doesn't look like it has a date or time I recognize. If it does, teach me what it means (phrase = meaning), or just save it as-is.")
+            .setView(ruleInput)
+            .setPositiveButton("Teach & save") { _, _ ->
+                val ruleText = ruleInput.text.toString()
+                val parts = ruleText.split("=", limit = 2)
+                if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                    val repo = com.nextup.app.parser.RuleLibraryRepository(requireContext())
+                    repo.addRule(parts[0].trim(), parts[1].trim())
+                    val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
+                    val reparsed = TaskParser.parse(originalInput, excluded, repo.getRules())
+                    saveTask(reparsed, source)
+                } else {
+                    saveTask(parsed, source)
+                }
+            }
+            .setNegativeButton("Just save it") { _, _ ->
+                saveTask(parsed, source)
+            }
+            .setCancelable(false)
+            .show()
     }
 
     private fun showAmbiguousPriorityDialog(parsed: ParsedTaskResult, source: SourceType) {
