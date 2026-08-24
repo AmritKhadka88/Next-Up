@@ -100,6 +100,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
         }
 
+        com.nextup.app.parser.KeywordHighlighter(editText).attach()
+
         sendButton.setOnClickListener {
             val input = editText.text.toString().trim()
             if (input.isNotBlank()) {
@@ -124,7 +126,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun handleParsedInput(input: String, source: SourceType) {
-        val parsed = TaskParser.parse(input)
+        val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
+        val parsed = TaskParser.parse(input, excluded)
 
         if (parsed.ambiguousPriorityPhrase != null) {
             showAmbiguousPriorityDialog(parsed, source)
