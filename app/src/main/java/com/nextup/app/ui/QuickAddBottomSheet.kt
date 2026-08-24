@@ -198,9 +198,27 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         lifecycleScope.launch {
             TaskDatabase.getInstance(requireContext()).taskDao().insert(task)
             com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
+
+            parsed.usedRulePhrase?.let {
+                com.nextup.app.parser.RuleLibraryRepository(requireContext()).markUsed(it)
+            }
+            maybeRunStalenessPrune()
+
             // TODO: if task.hasAlarm, schedule via AlarmManager here using task.dueTime/dueDate.
             dismiss()
         }
+    }
+
+    /** Runs the 4-month staleness prune at most once per day, not on every single save. */
+    private fun maybeRunStalenessPrune() {
+        val prefs = requireContext().getSharedPreferences("nextup_maintenance", android.content.Context.MODE_PRIVATE)
+        val lastRun = prefs.getLong("last_prune_check", 0L)
+        val now = System.currentTimeMillis()
+        if (now - lastRun < 24L * 60 * 60 * 1000) return
+
+        com.nextup.app.parser.RuleLibraryRepository(requireContext()).pruneStale()
+        com.nextup.app.parser.LearnedWordsRepository(requireContext()).pruneStale()
+        prefs.edit().putLong("last_prune_check", now).apply()
     }
 
     override fun onDismiss(dialog: DialogInterface) {
