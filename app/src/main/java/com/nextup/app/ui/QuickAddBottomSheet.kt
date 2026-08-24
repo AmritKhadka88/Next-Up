@@ -1,18 +1,21 @@
 package com.nextup.app.ui
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.nextup.app.R
 import com.nextup.app.data.SourceType
 import com.nextup.app.data.TaskDatabase
+import com.nextup.app.R
 import com.nextup.app.parser.ParsedTaskResult
 import com.nextup.app.parser.TaskParser
 import kotlinx.coroutines.launch
@@ -20,7 +23,9 @@ import java.time.LocalDate
 
 /**
  * Compact quick-add sheet: type or speak a single line and it is parsed + saved instantly.
- * Can optionally be pre-targeted at a specific date (used by double-tap on a calendar day).
+ * Can be pre-targeted at a specific date (double-tap on a calendar day), or launched
+ * from the home screen widget (in which case dismissing it also finishes the transparent
+ * host activity so the widget-launch doesn't leave a lingering blank activity behind).
  */
 class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
@@ -28,10 +33,17 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         private const val ARG_PREFILL_DATE = "arg_prefill_date"
+        private const val ARG_FINISH_HOST_ON_DISMISS = "arg_finish_host_on_dismiss"
 
         fun newInstanceForDate(date: LocalDate): QuickAddBottomSheet {
             val sheet = QuickAddBottomSheet()
             sheet.arguments = Bundle().apply { putString(ARG_PREFILL_DATE, date.toString()) }
+            return sheet
+        }
+
+        fun newInstanceForWidget(): QuickAddBottomSheet {
+            val sheet = QuickAddBottomSheet()
+            sheet.arguments = Bundle().apply { putBoolean(ARG_FINISH_HOST_ON_DISMISS, true) }
             return sheet
         }
     }
@@ -42,6 +54,14 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         return inflater.inflate(R.layout.bottom_sheet_quick_add, container, false)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Ensures the keyboard is forced open even when this sheet is the very first
+        // thing shown in a freshly-launched (widget) activity, where a plain requestFocus()
+        // is not always enough to trigger the IME.
+        dialog?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -56,6 +76,10 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         val micButton = view.findViewById<ImageButton>(R.id.buttonMic)
 
         editText.requestFocus()
+        editText.post {
+            val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
+        }
 
         sendButton.setOnClickListener {
             val input = editText.text.toString().trim()
@@ -104,6 +128,13 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             TaskDatabase.getInstance(requireContext()).taskDao().insert(task)
             // TODO: if task.hasAlarm, schedule via AlarmManager here using task.dueTime/dueDate.
             dismiss()
+        }
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        if (arguments?.getBoolean(ARG_FINISH_HOST_ON_DISMISS) == true) {
+            activity?.finish()
         }
     }
 }
