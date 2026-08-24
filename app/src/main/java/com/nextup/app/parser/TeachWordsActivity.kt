@@ -84,20 +84,37 @@ class TeachWordsActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.export_library))
             .setView(scroll)
-            .setPositiveButton(R.string.copy_to_clipboard) { _, _ ->
+            .setPositiveButton(R.string.save_share_file) { _, _ ->
+                shareAsFile(exportText)
+            }
+            .setNeutralButton(R.string.copy_to_clipboard) { _, _ ->
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("NextUp rule library", exportText))
                 Toast.makeText(this, "Copied — paste it wherever you're sending it", Toast.LENGTH_SHORT).show()
             }
-            .setNeutralButton(R.string.share) { _, _ ->
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, exportText)
-                }
-                startActivity(Intent.createChooser(shareIntent, getString(R.string.export_library)))
-            }
-            .setNegativeButton(android.R.string.ok, null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /**
+     * Writes the export to a real .txt file in the app's cache dir and shares it via
+     * FileProvider — so it shows up as an actual attachable file in whatever app the
+     * user shares to (Drive, email, WhatsApp, Files, etc.), not just plain text.
+     */
+    private fun shareAsFile(content: String) {
+        val exportsDir = java.io.File(cacheDir, "exports").apply { mkdirs() }
+        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmm", java.util.Locale.getDefault()).format(java.util.Date())
+        val file = java.io.File(exportsDir, "nextup_rules_$timestamp.txt")
+        file.writeText(content)
+
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.export_library)))
     }
 
     private fun refreshLists() {
