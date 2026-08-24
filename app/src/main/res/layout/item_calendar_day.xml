@@ -2,13 +2,42 @@
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="48dp">
+    android:layout_height="52dp">
+
+    <!-- Hand-drawn circle overlay, only visible for dates with a high-priority task -->
+    <ImageView
+        android:id="@+id/imageHighPriorityCircle"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_hand_drawn_circle"
+        android:visibility="gone" />
+
+    <!-- Subtle circular outline for today, when it's not already a high-priority day -->
+    <View
+        android:id="@+id/viewTodayCircle"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_today_circle"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/textDayNumber"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_gravity="center"
         android:gravity="center"
         android:textSize="14sp" />
+
+    <!-- Small dot indicator for a normal/medium task on this day (below the number) -->
+    <View
+        android:id="@+id/viewTaskDot"
+        android:layout_width="5dp"
+        android:layout_height="5dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/dot_indicator"
+        android:visibility="gone" />
 
 </FrameLayout>

@@ -1,25 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="horizontal"
     android:padding="2dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <ImageView
+        android:id="@+id/widgetAddButtonExpanded"
+        android:layout_width="56dp"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="@drawable/bg_widget_capsule"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:src="@drawable/ic_widget_add"
+        android:scaleType="fitCenter"
+        android:padding="6dp"
+        android:contentDescription="@string/add_task" />
+
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp">
+
+        <ImageView
+            android:id="@+id/widgetCapsuleBackground"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/capsule_mask"
+            android:scaleType="fitXY" />
 
         <ListView
             android:id="@android:id/list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="#EEEEEE"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:divider="#22000000"
             android:dividerHeight="1dp"
-            android:scrollbars="none" />
+            android:scrollbars="none"
+            android:cacheColorHint="@android:color/transparent" />
 
         <TextView
             android:id="@android:id/empty"
@@ -29,6 +47,6 @@
             android:text="@string/no_upcoming_tasks"
             android:textColor="#9E9E9E" />
 
-    </LinearLayout>
+    </FrameLayout>
 
-</FrameLayout>
+</LinearLayout>
