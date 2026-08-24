@@ -62,4 +62,15 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET isCompleted = :completed WHERE id = :id")
     suspend fun setCompleted(id: Long, completed: Boolean)
+
+    // Synchronous (non-suspend) on purpose: RemoteViewsFactory methods are called by the
+    // widget host on its own background thread and cannot use coroutines, so a direct
+    // blocking Room query is the correct approach here.
+    @Query("""
+        SELECT * FROM tasks
+        WHERE isCompleted = 0 AND isDailyTask = 0
+        ORDER BY dueDate ASC, dueTime ASC
+        LIMIT 50
+    """)
+    fun getUpcomingTasksSync(): List<Task>
 }
