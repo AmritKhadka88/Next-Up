@@ -19,7 +19,10 @@ data class ParsedTaskResult(
     val recipient: String?,
     val isDailyTask: Boolean,
     val ambiguousPriorityPhrase: String? = null,
-    val ambiguousSuggestedPriority: Priority? = null
+    val ambiguousSuggestedPriority: Priority? = null,
+    /** True when nothing in the text looked like a date/time even though the wording
+     *  suggests the user meant to specify one — a signal the UI can use to offer teaching a rule. */
+    val possiblyMissingDateTime: Boolean = false
 ) {
     fun toTask(source: SourceType = SourceType.MANUAL, overrideDate: LocalDate? = null): Task {
         val zone = ZoneId.systemDefault()
@@ -65,6 +68,13 @@ data class ParsedTaskResult(
 
 object TaskParser {
 
+    // Heuristic trigger words: if any of these show up but no date/time got extracted,
+    // the sentence probably meant to specify a time in wording the app doesn't know yet.
+    private val temporalHintRegex = Regex(
+        """\b(now|today|tomorrow|tonight|later|next|after|before|hour|minute|second|day|week|month|year|morning|evening|night|noon|midnight|am|pm)\b""",
+        RegexOption.IGNORE_CASE
+    )
+
     private fun wordToPriority(word: String): Priority = when (word.lowercase()) {
         "high" -> Priority.HIGH
         "medium" -> Priority.MEDIUM
@@ -72,16 +82,19 @@ object TaskParser {
         else -> Priority.NORMAL
     }
 
-    /** Finds the first match of [regex] whose matched text hasn't been excluded by the user. */
     private fun findAccepted(regex: Regex, text: String, excluded: Set<String>): MatchResult? {
         return regex.findAll(text).firstOrNull { LearnedWordsRepository.normalize(it.value) !in excluded }
     }
 
     /**
-     * @param excludedPhrases phrases the user has double-tap-taught the app to treat as plain
-     * text (from LearnedWordsRepository), so they're skipped here even though they'd otherwise match.
+     * @param excludedPhrases phrases double-tap-taught to be treated as plain text.
+     * @param rules user-taught phrase-to-meaning equivalences (the "library").
      */
-    fun parse(rawInput: String, excludedPhrases: Set<String> = emptySet()): ParsedTaskResult {
+    fun parse(
+        rawInput: String,
+        excludedPhrases: Set<String> = emptySet(),
+        rules: List<Rule> = emptyList()
+    ): ParsedTaskResult {
         var text = rawInput.trim()
 
         // 1. priority
@@ -125,7 +138,7 @@ object TaskParser {
                 ?.toDoubleOrNull()
         }
 
-        // 5. recipient — detected as data, no longer removed from the visible title
+        // 5. recipient — data only, not stripped from title
         val recipientMatch = if (amount != null) findAccepted(ParserPatterns.recipientRegex, text, excludedPhrases) else null
         val recipient = recipientMatch?.groupValues?.get(1)
 
@@ -140,22 +153,50 @@ object TaskParser {
             }
         }
 
-        // 7. till/by presence (excluded occurrences don't count as a real signal)
+        // 7. till/by presence
         val hasTillWord = findAccepted(ParserPatterns.tillRegex, text, excludedPhrases) != null
         val hasByWord = findAccepted(ParserPatterns.byRegex, text, excludedPhrases) != null
 
-        // 8. normalize number words, then extract date + time
+        // 8. date/time resolution, in priority order:
+        //    a) learned rules (user-taught phrase equivalences)
+        //    b) relative durations ("5 seconds from now", "in 3 hours")
+        //    c) the standard absolute date/time patterns
         val normalized = DateTimeExtractor.normalizeNumberWords(text)
-        var extractedDate = DateTimeExtractor.extractDate(normalized)
-        if (extractedDate != null && LearnedWordsRepository.normalize(extractedDate.matchedText) in excludedPhrases) {
-            extractedDate = null
-        }
-        var extractedTime = DateTimeExtractor.extractTime(normalized)
-        if (extractedTime != null && LearnedWordsRepository.normalize(extractedTime.matchedText) in excludedPhrases) {
-            extractedTime = null
+
+        var extractedDate: ExtractedDate? = null
+        var extractedTime: ExtractedTime? = null
+
+        for (rule in rules) {
+            val idx = text.indexOf(rule.phrase, ignoreCase = true)
+            if (idx < 0) continue
+            val (ruleDate, ruleTime) = RuleLibraryRepository.resolveMeaning(rule.meaning)
+            if (ruleDate == null && ruleTime == null) continue
+            val matchedSubstring = text.substring(idx, idx + rule.phrase.length)
+            if (ruleDate != null) extractedDate = ExtractedDate(ruleDate, matchedSubstring)
+            if (ruleTime != null) extractedTime = ExtractedTime(ruleTime, matchedSubstring)
+            break
         }
 
-        // 9. decide the real deadline type: "till" only counts if a date/time was actually found
+        if (extractedDate == null && extractedTime == null) {
+            val duration = RelativeDurationExtractor.extract(normalized)
+            if (duration != null) {
+                extractedDate = ExtractedDate(duration.date, duration.matchedText)
+                if (duration.time != null) {
+                    extractedTime = ExtractedTime(duration.time, duration.matchedText)
+                }
+            }
+        }
+
+        if (extractedDate == null) {
+            val d = DateTimeExtractor.extractDate(normalized)
+            extractedDate = if (d != null && LearnedWordsRepository.normalize(d.matchedText) !in excludedPhrases) d else null
+        }
+        if (extractedTime == null) {
+            val t = DateTimeExtractor.extractTime(normalized)
+            extractedTime = if (t != null && LearnedWordsRepository.normalize(t.matchedText) !in excludedPhrases) t else null
+        }
+
+        // 9. decide the real deadline type
         val hasDateOrTime = extractedDate != null || extractedTime != null
         val deadlineType = when {
             hasTillWord && hasDateOrTime -> DeadlineType.TILL
@@ -171,19 +212,21 @@ object TaskParser {
         }
         if (extractedDate != null) {
             title = title.replace(
-                Regex("""(?:\b(?:at|on)\s+)?${Regex.escape(extractedDate.matchedText)}""", RegexOption.IGNORE_CASE),
+                Regex("""(?:\b(?:at|on|in)\s+)?${Regex.escape(extractedDate.matchedText)}""", RegexOption.IGNORE_CASE),
                 ""
             )
         }
-        if (extractedTime != null) {
+        if (extractedTime != null && extractedTime.matchedText != extractedDate?.matchedText) {
             title = title.replace(
-                Regex("""(?:\b(?:at)\s+)?${Regex.escape(extractedTime.matchedText)}""", RegexOption.IGNORE_CASE),
+                Regex("""(?:\b(?:at|in)\s+)?${Regex.escape(extractedTime.matchedText)}""", RegexOption.IGNORE_CASE),
                 ""
             )
         }
         title = title.replace(Regex("""\s{2,}"""), " ").trim(' ', ',', '.', '-')
 
         if (title.isBlank()) title = rawInput.trim()
+
+        val possiblyMissing = !hasDateOrTime && temporalHintRegex.containsMatchIn(rawInput)
 
         return ParsedTaskResult(
             title = title,
@@ -196,7 +239,8 @@ object TaskParser {
             recipient = recipient,
             isDailyTask = isDailyTask,
             ambiguousPriorityPhrase = ambiguousPhrase,
-            ambiguousSuggestedPriority = ambiguousPriority
+            ambiguousSuggestedPriority = ambiguousPriority,
+            possiblyMissingDateTime = possiblyMissing
         )
     }
 }
