@@ -41,6 +41,13 @@
             android:layout_height="wrap_content"
             android:text="@string/import_rules"
             android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/buttonImportRulesFromFile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/import_from_file"
             android:layout_marginBottom="24dp" />
 
         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginBottom="20dp" />
@@ -66,6 +73,13 @@
             android:layout_height="wrap_content"
             android:text="@string/export_library"
             android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/buttonImportFromFile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/import_from_file"
+            android:layout_marginBottom="12dp" />
 
         <EditText
             android:id="@+id/editTextAiUpdate"
