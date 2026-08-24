@@ -39,4 +39,12 @@
     <string name="weekday_fri">F</string>
     <string name="weekday_sat">S</string>
     <string name="no_upcoming_tasks">No upcoming tasks</string>
+
+    <string name="widget_settings_title">Widget settings</string>
+    <string name="widget_which_tasks">Which tasks to show</string>
+    <string name="widget_font_size">Font size</string>
+    <string name="widget_font_color">Widget font color</string>
+    <string name="widget_background_color">Widget background color</string>
+    <string name="widget_background_transparency">Widget background transparency</string>
+    <string name="apply_and_refresh_widget">Apply and refresh widget</string>
 </resources>
