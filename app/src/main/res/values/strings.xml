@@ -47,4 +47,13 @@
     <string name="widget_background_color">Widget background color</string>
     <string name="widget_background_transparency">Widget background transparency</string>
     <string name="apply_and_refresh_widget">Apply and refresh widget</string>
+
+    <string name="teach_title">Teach the app</string>
+    <string name="teach_instructions">Paste rules, one per line, as "phrase = meaning". A meaning can point at another phrase the app already understands ("two days from now = day after tomorrow"), or an explicit offset ("today + 2", "now + 30 minutes").</string>
+    <string name="teach_hint">e.g.\ntwo days from now = day after tomorrow\nin a bit = now + 30 minutes</string>
+    <string name="import_rules">Import rules</string>
+    <string name="learned_rules">Learned rules</string>
+    <string name="excluded_words">Words taught as plain text</string>
+    <string name="none_yet">None yet</string>
+    <string name="clear_everything_learned">Clear everything learned</string>
 </resources>
