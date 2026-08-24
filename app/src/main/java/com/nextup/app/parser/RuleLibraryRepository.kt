@@ -3,77 +3,188 @@ package com.nextup.app.parser
 import android.content.Context
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
-data class Rule(val phrase: String, val meaning: String)
+enum class RuleSource { HUMAN, AI }
+
+data class Rule(
+    val phrase: String,
+    val meaning: String,
+    val source: RuleSource = RuleSource.HUMAN,
+    val lastUsed: LocalDate = LocalDate.now(),
+    val useCount: Int = 0
+)
 
 /**
- * The teachable "library" of custom phrase equivalences. Two ways to add a rule:
- *
- * 1. Alias to something the app already understands:
- *    "two days from now = day after tomorrow"
- *
- * 2. An explicit formula, "today"/"now" plus/minus an offset:
- *    "the day after tomorrow = today + 2"        (days is the default unit)
- *    "in a bit = now + 30 minutes"
- *
- * Rules are stored as "phrase|||meaning" strings in a SharedPreferences StringSet —
- * simple and avoids pulling in a JSON dependency for what's just pairs of short strings.
+ * The teachable "library" of custom phrase equivalences, now with usage tracking so it can
+ * grow and prune itself over time:
+ *  - Every time a rule actually fires during parsing, its use count and last-used date update.
+ *  - Rules untouched for 4+ months get automatically cleared out (pruneStale()).
+ *  - Rules are tagged HUMAN (typed directly in the app) or AI (came from an export/import
+ *    round-trip with an AI). Re-importing an AI-generated update never overwrites a HUMAN
+ *    rule for the same phrase — your hand-written ones are protected by default.
  */
 class RuleLibraryRepository(context: Context) {
 
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
 
     fun getRules(): List<Rule> {
-        return prefs.getStringSet(KEY_RULES, emptySet())?.mapNotNull { entry ->
-            val parts = entry.split(DELIMITER)
-            if (parts.size == 2) Rule(parts[0], parts[1]) else null
-        } ?: emptyList()
+        return prefs.getStringSet(KEY_RULES, emptySet())?.mapNotNull { decode(it) } ?: emptyList()
     }
 
-    fun addRule(phrase: String, meaning: String) {
-        val current = prefs.getStringSet(KEY_RULES, emptySet())?.toMutableSet() ?: mutableSetOf()
-        // Replace any existing rule for the same phrase rather than duplicating it.
-        current.removeAll { it.startsWith("${normalize(phrase)}$DELIMITER") }
-        current.add("${normalize(phrase)}$DELIMITER${meaning.trim()}")
-        prefs.edit().putStringSet(KEY_RULES, current).apply()
+    private fun saveAll(rules: List<Rule>) {
+        val encoded = rules.map { encode(it) }.toSet()
+        prefs.edit().putStringSet(KEY_RULES, encoded).apply()
+    }
+
+    fun addRule(phrase: String, meaning: String, source: RuleSource = RuleSource.HUMAN) {
+        val current = getRules().toMutableList()
+        current.removeAll { normalize(it.phrase) == normalize(phrase) }
+        current.add(Rule(normalize(phrase), meaning.trim(), source, LocalDate.now(), 0))
+        saveAll(current)
     }
 
     fun removeRule(phrase: String) {
-        val current = prefs.getStringSet(KEY_RULES, emptySet())?.toMutableSet() ?: return
-        current.removeAll { it.startsWith("${normalize(phrase)}$DELIMITER") }
-        prefs.edit().putStringSet(KEY_RULES, current).apply()
+        saveAll(getRules().filterNot { normalize(it.phrase) == normalize(phrase) })
     }
 
     fun clearAll() {
         prefs.edit().remove(KEY_RULES).apply()
     }
 
-    /**
-     * Parses bulk-pasted rules, one per line, in "phrase = meaning" format.
-     * Returns how many rules were successfully imported.
-     */
+    /** Call whenever a rule actually fires while parsing a task, to keep its usage stats current. */
+    fun markUsed(phrase: String) {
+        val current = getRules().toMutableList()
+        val idx = current.indexOfFirst { normalize(it.phrase) == normalize(phrase) }
+        if (idx >= 0) {
+            val r = current[idx]
+            current[idx] = r.copy(lastUsed = LocalDate.now(), useCount = r.useCount + 1)
+            saveAll(current)
+        }
+    }
+
+    /** Removes any rule that hasn't fired in [days] days. Returns how many were removed. */
+    fun pruneStale(days: Long = 120): Int {
+        val cutoff = LocalDate.now().minusDays(days)
+        val current = getRules()
+        val kept = current.filter { it.lastUsed.isAfter(cutoff) }
+        val removedCount = current.size - kept.size
+        if (removedCount > 0) saveAll(kept)
+        return removedCount
+    }
+
+    /** Bulk import typed/pasted directly in the app — always tagged HUMAN, always applied. */
     fun importBulkText(text: String): Int {
         var count = 0
         text.lines().forEach { line ->
             val parts = line.split("=", limit = 2)
-            if (parts.size == 2) {
-                val phrase = parts[0].trim()
-                val meaning = parts[1].trim()
-                if (phrase.isNotBlank() && meaning.isNotBlank()) {
-                    addRule(phrase, meaning)
-                    count++
-                }
+            if (parts.size == 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                addRule(parts[0].trim(), parts[1].trim(), RuleSource.HUMAN)
+                count++
             }
         }
         return count
     }
 
+    /**
+     * Imports a pasted AI-updated export. Understands both the full annotated export format
+     * and plain "phrase = meaning" lines (e.g. brand-new rules an AI just generated with no
+     * tags yet). HUMAN rules already stored locally are never overwritten by this — only
+     * new phrases or existing AI-tagged phrases get applied. Returns (added, skippedHuman).
+     */
+    fun importAiUpdate(text: String): Pair<Int, Int> {
+        var added = 0
+        var skippedHuman = 0
+        val current = getRules().toMutableList()
+        val humanPhrases = current.filter { it.source == RuleSource.HUMAN }.map { normalize(it.phrase) }.toSet()
+
+        text.lines().forEach { rawLine ->
+            val line = rawLine.trim()
+            if (line.isEmpty() || line.startsWith("#")) return@forEach
+
+            val annotated = annotatedLineRegex.find(line)
+            val phrase: String
+            val meaning: String
+            var lastUsed = LocalDate.now()
+            var useCount = 0
+
+            if (annotated != null) {
+                phrase = annotated.groupValues[1].trim()
+                meaning = annotated.groupValues[2].trim()
+                lastUsed = try { LocalDate.parse(annotated.groupValues[5], dateFmt) } catch (e: Exception) { LocalDate.now() }
+                useCount = annotated.groupValues[4].toIntOrNull() ?: 0
+            } else {
+                val simple = line.split("=", limit = 2)
+                if (simple.size != 2 || simple[0].isBlank() || simple[1].isBlank()) return@forEach
+                phrase = simple[0].trim()
+                meaning = simple[1].trim()
+            }
+
+            if (normalize(phrase) in humanPhrases) {
+                skippedHuman++
+                return@forEach
+            }
+
+            current.removeAll { normalize(it.phrase) == normalize(phrase) }
+            current.add(Rule(normalize(phrase), meaning, RuleSource.AI, lastUsed, useCount))
+            added++
+        }
+
+        saveAll(current)
+        return added to skippedHuman
+    }
+
+    fun exportAsText(): String {
+        val rules = getRules().sortedByDescending { it.useCount }
+        val sb = StringBuilder()
+        sb.appendLine("# NextUp rule library export — ${LocalDate.now()}")
+        sb.appendLine("# RULES: phrase = meaning [human/ai] used=N last=yyyy-MM-dd")
+        sb.appendLine("# Lines tagged [human] were typed directly in the app — please don't change")
+        sb.appendLine("# or remove them unless specifically asked to. Lines tagged [ai] came from a")
+        sb.appendLine("# previous AI update and are safe to refine or replace. New rules can just be")
+        sb.appendLine("# plain \"phrase = meaning\" lines with no tag.")
+        sb.appendLine()
+        rules.forEach { r ->
+            val tag = if (r.source == RuleSource.HUMAN) "human" else "ai"
+            sb.appendLine("${r.phrase} = ${r.meaning} [$tag] used=${r.useCount} last=${r.lastUsed.format(dateFmt)}")
+        }
+        return sb.toString()
+    }
+
+    private fun encode(rule: Rule): String {
+        return listOf(
+            rule.phrase, rule.meaning, rule.source.name,
+            rule.lastUsed.format(dateFmt), rule.useCount.toString()
+        ).joinToString(DELIMITER)
+    }
+
+    private fun decode(entry: String): Rule? {
+        val parts = entry.split(DELIMITER)
+        return when (parts.size) {
+            5 -> try {
+                Rule(
+                    parts[0], parts[1],
+                    RuleSource.valueOf(parts[2]),
+                    LocalDate.parse(parts[3], dateFmt),
+                    parts[4].toIntOrNull() ?: 0
+                )
+            } catch (e: Exception) { null }
+            2 -> Rule(parts[0], parts[1]) // old format before usage-tracking existed
+            else -> null
+        }
+    }
+
     companion object {
         private const val PREFS_NAME = "nextup_rule_library"
-        private const val KEY_RULES = "rules"
+        private const val KEY_RULES = "rules_v2"
         private const val DELIMITER = "|||"
+
+        private val annotatedLineRegex = Regex(
+            """^(.+?)\s*=\s*(.+?)\s*\[(human|ai)]\s*used=(\d+)\s*last=(\d{4}-\d{2}-\d{2})\s*$""",
+            RegexOption.IGNORE_CASE
+        )
 
         fun normalize(phrase: String): String = phrase.trim().lowercase()
 
@@ -82,14 +193,7 @@ class RuleLibraryRepository(context: Context) {
             RegexOption.IGNORE_CASE
         )
 
-        /**
-         * Resolves a rule's right-hand side to a concrete date/time. Tries the explicit
-         * "today/now +/- N unit" formula first; if that doesn't match, treats the meaning
-         * as an ordinary phrase and re-runs it through the normal parsing pipeline
-         * (relative durations, then absolute date/time patterns) — which lets one rule's
-         * meaning point at "day after tomorrow" or any other phrase the app already understands.
-         */
-        fun resolveMeaning(meaning: String, now: LocalDateTime = LocalDateTime.now(ZoneId.systemDefault())): Pair<LocalDate?, LocalTime?> {
+        fun resolveMeaning(meaning: String, now: LocalDateTime = LocalDateTime.now(ZoneId.systemDefault())): Pair<LocalDate?, java.time.LocalTime?> {
             val formulaMatch = formulaRegex.find(meaning)
             if (formulaMatch != null) {
                 val base = formulaMatch.groupValues[1].lowercase()
@@ -109,7 +213,6 @@ class RuleLibraryRepository(context: Context) {
                 return result.toLocalDate() to (if (impliesTime) result.toLocalTime() else null)
             }
 
-            // Not a formula — treat it as an ordinary phrase and reuse the standard pipeline.
             val normalized = DateTimeExtractor.normalizeNumberWords(meaning)
             val duration = RelativeDurationExtractor.extract(normalized, now)
             if (duration != null) return duration.date to duration.time

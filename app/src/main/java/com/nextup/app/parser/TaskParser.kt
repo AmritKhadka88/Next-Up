@@ -22,7 +22,9 @@ data class ParsedTaskResult(
     val ambiguousSuggestedPriority: Priority? = null,
     /** True when nothing in the text looked like a date/time even though the wording
      *  suggests the user meant to specify one — a signal the UI can use to offer teaching a rule. */
-    val possiblyMissingDateTime: Boolean = false
+    val possiblyMissingDateTime: Boolean = false,
+    /** Which learned rule (if any) actually fired during this parse, so its usage stats can be updated. */
+    val usedRulePhrase: String? = null
 ) {
     fun toTask(source: SourceType = SourceType.MANUAL, overrideDate: LocalDate? = null): Task {
         val zone = ZoneId.systemDefault()
@@ -165,6 +167,7 @@ object TaskParser {
 
         var extractedDate: ExtractedDate? = null
         var extractedTime: ExtractedTime? = null
+        var usedRulePhrase: String? = null
 
         for (rule in rules) {
             val idx = text.indexOf(rule.phrase, ignoreCase = true)
@@ -174,6 +177,7 @@ object TaskParser {
             val matchedSubstring = text.substring(idx, idx + rule.phrase.length)
             if (ruleDate != null) extractedDate = ExtractedDate(ruleDate, matchedSubstring)
             if (ruleTime != null) extractedTime = ExtractedTime(ruleTime, matchedSubstring)
+            usedRulePhrase = rule.phrase
             break
         }
 
@@ -240,7 +244,8 @@ object TaskParser {
             isDailyTask = isDailyTask,
             ambiguousPriorityPhrase = ambiguousPhrase,
             ambiguousSuggestedPriority = ambiguousPriority,
-            possiblyMissingDateTime = possiblyMissing
+            possiblyMissingDateTime = possiblyMissing,
+            usedRulePhrase = usedRulePhrase
         )
     }
 }
