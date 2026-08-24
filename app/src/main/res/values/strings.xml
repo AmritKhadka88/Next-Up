@@ -43,6 +43,8 @@
     <string name="widget_settings_title">Widget settings</string>
     <string name="widget_which_tasks">Which tasks to show</string>
     <string name="widget_font_size">Font size</string>
+    <string name="widget_task_count">Number of tasks to show</string>
+    <string name="widget_task_count_note">Only applies when the widget is tall enough to show multiple rows — a single-row widget always shows just the next task.</string>
     <string name="widget_font_color">Widget font color</string>
     <string name="widget_background_color">Widget background color</string>
     <string name="widget_background_transparency">Widget background transparency</string>
