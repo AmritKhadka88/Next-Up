@@ -146,11 +146,11 @@ object TaskParser {
                 ?.toDoubleOrNull()
         }
 
-        // 5. recipient — still removed from the title, since "to Amrit" reads as redundant
-        //    once it's captured as structured data.
+        // 5. recipient — detected for the Task's data field, but no longer removed from the
+        //    title either (same reasoning as amount: silently deleting "to Suman" made it
+        //    look like part of what was typed had disappeared).
         val recipientMatch = if (amount != null) recipientRegex.find(text) else null
         val recipient = recipientMatch?.groupValues?.get(1)
-        if (recipientMatch != null) text = text.removeRange(recipientMatch.range)
 
         // 6. ambiguous mid-sentence priority phrase
         var ambiguousPhrase: String? = null
@@ -191,10 +191,16 @@ object TaskParser {
             title = Regex("""\b(till|until)\b""", RegexOption.IGNORE_CASE).replace(title, "")
         }
         if (extractedDate != null) {
-            title = title.replace(Regex(Regex.escape(extractedDate.matchedText), RegexOption.IGNORE_CASE), "")
+            title = title.replace(
+                Regex("""(?:\b(?:at|on)\s+)?${Regex.escape(extractedDate.matchedText)}""", RegexOption.IGNORE_CASE),
+                ""
+            )
         }
         if (extractedTime != null) {
-            title = title.replace(Regex(Regex.escape(extractedTime.matchedText), RegexOption.IGNORE_CASE), "")
+            title = title.replace(
+                Regex("""(?:\b(?:at)\s+)?${Regex.escape(extractedTime.matchedText)}""", RegexOption.IGNORE_CASE),
+                ""
+            )
         }
         title = title.replace(Regex("""\s{2,}"""), " ").trim(' ', ',', '.', '-')
 
