@@ -34,6 +34,32 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="@string/widget_task_count"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_task_count_note"
+            android:textSize="12sp"
+            android:textColor="#757575"
+            android:layout_marginBottom="4dp" />
+
+        <SeekBar
+            android:id="@+id/seekBarTaskCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="19" />
+
+        <TextView
+            android:id="@+id/textTaskCountPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:text="@string/widget_font_size"
             android:textStyle="bold" />
 
