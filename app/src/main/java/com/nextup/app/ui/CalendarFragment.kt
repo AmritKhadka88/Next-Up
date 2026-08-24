@@ -83,6 +83,12 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
         loadTasksForSelectedDay()
     }
 
+    override fun onResume() {
+        super.onResume()
+        val settings = com.nextup.app.settings.SettingsRepository(requireContext())
+        view?.setBackgroundColor(settings.backgroundColor)
+    }
+
     private fun loadMonth() {
         monthLabel.text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}"
 
@@ -113,13 +119,16 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
             val dayStartMillis = date.atStartOfDay(zone).toInstant().toEpochMilli()
 
             val hasTaskOnDay = tasksInMonth.any { it.dueDate == dayStartMillis }
+            val hasHighPriorityTask = tasksInMonth.any {
+                it.dueDate == dayStartMillis && it.priority == com.nextup.app.data.Priority.HIGH
+            }
             val isInTillRange = tasksInMonth.any { task ->
                 task.deadlineType == com.nextup.app.data.DeadlineType.TILL &&
                     task.startHighlightDate != null &&
                     dayStartMillis in task.startHighlightDate!!..task.dueDate
             }
 
-            days.add(CalendarDay(date, hasTaskOnDay, isInTillRange))
+            days.add(CalendarDay(date, hasTaskOnDay, isInTillRange, hasHighPriorityTask = hasHighPriorityTask))
         }
 
         gridAdapter.submitList(days)
@@ -162,5 +171,6 @@ data class CalendarDay(
     val date: LocalDate?,
     val hasTask: Boolean,
     val isInTillRange: Boolean,
-    val isPlaceholder: Boolean = false
+    val isPlaceholder: Boolean = false,
+    val hasHighPriorityTask: Boolean = false
 )

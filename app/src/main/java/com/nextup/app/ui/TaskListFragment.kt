@@ -31,9 +31,6 @@ class TaskListFragment : Fragment(R.layout.fragment_task_list) {
         super.onViewCreated(view, savedInstanceState)
         isDaily = arguments?.getBoolean(ARG_DAILY) ?: false
 
-        val settings = SettingsRepository(requireContext())
-        view.setBackgroundColor(settings.backgroundColor)
-
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewTasks)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
@@ -69,6 +66,18 @@ class TaskListFragment : Fragment(R.layout.fragment_task_list) {
             }.collect { filtered ->
                 adapter.submitList(buildGroupedList(filtered))
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-applied on every resume (not just once at creation) so a color/font change made
+        // in Settings shows up immediately when returning to this tab, instead of only
+        // taking effect the next time the fragment is recreated from scratch.
+        val settings = SettingsRepository(requireContext())
+        view?.setBackgroundColor(settings.backgroundColor)
+        if (::adapter.isInitialized) {
+            adapter.notifyDataSetChanged()
         }
     }
 }

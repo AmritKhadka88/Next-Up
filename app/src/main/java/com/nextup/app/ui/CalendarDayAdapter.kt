@@ -30,10 +30,16 @@ class CalendarDayAdapter(
 
     class DayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val dayNumber: TextView = itemView.findViewById(R.id.textDayNumber)
+        private val highPriorityCircle: View = itemView.findViewById(R.id.imageHighPriorityCircle)
+        private val todayCircle: View = itemView.findViewById(R.id.viewTodayCircle)
+        private val taskDot: View = itemView.findViewById(R.id.viewTaskDot)
 
         fun bind(day: CalendarDay, onDayClick: (CalendarDay) -> Unit, onDayDoubleTap: (CalendarDay) -> Unit) {
             if (day.isPlaceholder || day.date == null) {
                 dayNumber.text = ""
+                highPriorityCircle.visibility = View.GONE
+                todayCircle.visibility = View.GONE
+                taskDot.visibility = View.GONE
                 itemView.setBackgroundColor(Color.TRANSPARENT)
                 itemView.isClickable = false
                 itemView.setOnTouchListener(null)
@@ -45,12 +51,21 @@ class CalendarDayAdapter(
 
             val settings = SettingsRepository(itemView.context)
             val today = LocalDate.now()
-            when {
-                day.hasTask -> itemView.setBackgroundColor(Color.parseColor("#FFCDD2"))
-                day.isInTillRange -> itemView.setBackgroundColor(settings.highlightColor)
-                day.date == today -> itemView.setBackgroundColor(Color.parseColor("#E3F2FD"))
-                else -> itemView.setBackgroundColor(Color.TRANSPARENT)
-            }
+            val isToday = day.date == today
+
+            // TILL-range days get a soft full-cell tint; everything else stays clean/white
+            // so the dot and circle indicators read clearly instead of competing with a filled cell.
+            itemView.setBackgroundColor(
+                if (day.isInTillRange) settings.highlightColor else Color.TRANSPARENT
+            )
+
+            // The hand-drawn circle takes priority visually over the plain today-ring,
+            // since a high-priority date is the more important signal.
+            highPriorityCircle.visibility = if (day.hasHighPriorityTask) View.VISIBLE else View.GONE
+            todayCircle.visibility = if (isToday && !day.hasHighPriorityTask) View.VISIBLE else View.GONE
+
+            // Small dot for an ordinary (non-high-priority) task on this day.
+            taskDot.visibility = if (day.hasTask && !day.hasHighPriorityTask) View.VISIBLE else View.GONE
 
             val gestureDetector = GestureDetector(itemView.context, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapConfirmed(e: MotionEvent): Boolean {

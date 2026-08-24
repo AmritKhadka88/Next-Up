@@ -1,7 +1,9 @@
 package com.nextup.app.ui
 
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,26 +12,45 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.nextup.app.R
 import com.nextup.app.data.SourceType
 import com.nextup.app.data.TaskDatabase
-import com.nextup.app.R
 import com.nextup.app.parser.ParsedTaskResult
 import com.nextup.app.parser.TaskParser
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.util.Locale
 
 /**
- * Compact quick-add sheet: type or speak a single line and it is parsed + saved instantly.
+ * Compact quick-add sheet: type, speak, or write a single line and it is parsed + saved.
  * Can be pre-targeted at a specific date (double-tap on a calendar day), or launched
  * from the home screen widget (in which case dismissing it also finishes the transparent
- * host activity so the widget-launch doesn't leave a lingering blank activity behind).
+ * host activity).
  */
 class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
     private var prefillDate: LocalDate? = null
+    private lateinit var editTextRef: EditText
+
+    // Delegates to the system's speech recognizer app (Google app, typically) — this avoids
+    // needing our own RECORD_AUDIO runtime permission, since the recognition itself happens
+    // in that app, and we only receive back the transcribed text.
+    private val speechLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val transcript = matches?.firstOrNull()
+            if (!transcript.isNullOrBlank()) {
+                val existing = editTextRef.text.toString()
+                val combined = if (existing.isBlank()) transcript else "$existing $transcript"
+                editTextRef.setText(combined)
+                editTextRef.setSelection(combined.length)
+            }
+        }
+    }
 
     companion object {
         private const val ARG_PREFILL_DATE = "arg_prefill_date"
@@ -58,9 +79,6 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        // Ensures the keyboard is forced open even when this sheet is the very first
-        // thing shown in a freshly-launched (widget) activity, where a plain requestFocus()
-        // is not always enough to trigger the IME.
         dialog?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
     }
 
@@ -72,6 +90,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         }
 
         val editText = view.findViewById<EditText>(R.id.editTextQuickAdd)
+        editTextRef = editText
         val sendButton = view.findViewById<ImageButton>(R.id.buttonSend)
         val micButton = view.findViewById<ImageButton>(R.id.buttonMic)
 
@@ -88,9 +107,19 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        // Speech input hook: wire this to SpeechRecognizer / RecognizerIntent.
-        micButton.setOnClickListener {
-            Toast.makeText(requireContext(), "Wire SpeechRecognizer here", Toast.LENGTH_SHORT).show()
+        micButton.setOnClickListener { startVoiceInput() }
+    }
+
+    private fun startVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your task...")
+        }
+        try {
+            speechLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "No speech recognizer available on this device", Toast.LENGTH_SHORT).show()
         }
     }
 
