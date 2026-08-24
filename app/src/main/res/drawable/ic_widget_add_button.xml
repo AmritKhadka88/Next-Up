@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/bg_widget_button_circle" />
+    <item
+        android:width="55%"
+        android:height="55%"
+        android:gravity="center"
+        android:drawable="@drawable/ic_plus_white" />
+</layer-list>
