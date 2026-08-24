@@ -56,4 +56,13 @@
     <string name="excluded_words">Words taught as plain text</string>
     <string name="none_yet">None yet</string>
     <string name="clear_everything_learned">Clear everything learned</string>
+
+    <string name="ai_update_title">Update via AI (export/import)</string>
+    <string name="ai_update_instructions">Export your current library, send it to an AI (me, Gemini, etc.) and ask it to add or refine rules, then paste the result back here. Your hand-typed rules are protected — an AI update never overwrites them.</string>
+    <string name="export_library">Export library</string>
+    <string name="ai_update_hint">Paste the AI-updated library here</string>
+    <string name="import_ai_update">Import AI update</string>
+    <string name="cleanup_unused_now">Clean up unused now (4+ months)</string>
+    <string name="copy_to_clipboard">Copy</string>
+    <string name="share">Share</string>
 </resources>
