@@ -128,7 +128,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
     private fun handleParsedInput(input: String, source: SourceType) {
         val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
         val rules = com.nextup.app.parser.RuleLibraryRepository(requireContext()).getRules()
-        val parsed = TaskParser.parse(input, excluded, rules)
+        val fillers = com.nextup.app.parser.FillerPhraseRepository(requireContext()).getLearnedPhrases().map { it.phrase }
+        val parsed = TaskParser.parse(input, excluded, rules, fillers)
 
         if (parsed.possiblyMissingDateTime) {
             showTeachPrompt(input, parsed, source)
@@ -162,7 +163,8 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
                     val repo = com.nextup.app.parser.RuleLibraryRepository(requireContext())
                     repo.addRule(parts[0].trim(), parts[1].trim())
                     val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases()
-                    val reparsed = TaskParser.parse(originalInput, excluded, repo.getRules())
+                    val fillers = com.nextup.app.parser.FillerPhraseRepository(requireContext()).getLearnedPhrases().map { it.phrase }
+                    val reparsed = TaskParser.parse(originalInput, excluded, repo.getRules(), fillers)
                     saveTask(reparsed, source)
                 } else {
                     saveTask(parsed, source)
