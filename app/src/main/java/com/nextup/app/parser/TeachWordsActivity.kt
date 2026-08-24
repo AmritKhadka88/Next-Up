@@ -20,6 +20,43 @@ class TeachWordsActivity : AppCompatActivity() {
     private lateinit var rulesListView: TextView
     private lateinit var excludedListView: TextView
 
+    // Which target the next picked file should be imported into — set right before launching.
+    private var pendingFileImportTarget: FileImportTarget = FileImportTarget.AI_UPDATE
+
+    private enum class FileImportTarget { HUMAN_RULES, AI_UPDATE }
+
+    private val filePickerLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val text = try {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        } catch (e: Exception) {
+            null
+        }
+        if (text.isNullOrBlank()) {
+            Toast.makeText(this, "Couldn't read that file", Toast.LENGTH_SHORT).show()
+            return@registerForActivityResult
+        }
+
+        when (pendingFileImportTarget) {
+            FileImportTarget.HUMAN_RULES -> {
+                val count = ruleLibrary.importBulkText(text)
+                Toast.makeText(this, "Learned $count rule(s) from file", Toast.LENGTH_SHORT).show()
+            }
+            FileImportTarget.AI_UPDATE -> {
+                val (added, skipped) = ruleLibrary.importAiUpdate(text)
+                val message = if (skipped > 0) {
+                    "Added/updated $added rule(s) from file. Skipped $skipped (protected your hand-typed rules)."
+                } else {
+                    "Added/updated $added rule(s) from file."
+                }
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+        }
+        refreshLists()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_teach_words)
@@ -37,6 +74,11 @@ class TeachWordsActivity : AppCompatActivity() {
             refreshLists()
         }
 
+        findViewById<Button>(R.id.buttonImportRulesFromFile).setOnClickListener {
+            pendingFileImportTarget = FileImportTarget.HUMAN_RULES
+            filePickerLauncher.launch("text/plain")
+        }
+
         findViewById<Button>(R.id.buttonExportLibrary).setOnClickListener {
             showExportDialog()
         }
@@ -52,6 +94,11 @@ class TeachWordsActivity : AppCompatActivity() {
             Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             aiUpdateInput.text.clear()
             refreshLists()
+        }
+
+        findViewById<Button>(R.id.buttonImportFromFile).setOnClickListener {
+            pendingFileImportTarget = FileImportTarget.AI_UPDATE
+            filePickerLauncher.launch("text/plain")
         }
 
         findViewById<Button>(R.id.buttonCleanupNow).setOnClickListener {
