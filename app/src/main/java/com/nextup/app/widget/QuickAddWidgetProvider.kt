@@ -77,6 +77,19 @@ class QuickAddWidgetProvider : AppWidgetProvider() {
             // Left-side add button stays present at every expanded size, same as the compact widget.
             views.setOnClickPendingIntent(R.id.widgetAddButtonExpanded, addButtonPendingIntent(context))
 
+            // Tapping anywhere on the task list (a row, the empty-state text, or the
+            // background behind them) opens the app itself — separate from the add button.
+            val openAppIntent = Intent(context, com.nextup.app.ui.MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val openAppPendingIntent = PendingIntent.getActivity(
+                context, 1, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setPendingIntentTemplate(android.R.id.list, openAppPendingIntent)
+            views.setOnClickPendingIntent(android.R.id.empty, openAppPendingIntent)
+            views.setOnClickPendingIntent(R.id.widgetCapsuleBackground, openAppPendingIntent)
+
             // Tint the capsule background image to the user's chosen color + transparency.
             val bgColor = settings.widgetBackgroundColor
             val alpha = settings.widgetBackgroundAlpha

@@ -97,6 +97,11 @@ class QuickAddRemoteViewsFactory(
         }
         views.setInt(R.id.widgetItemPriorityDot, "setColorFilter", priorityColor)
 
+        // Required for RemoteViews collection rows: an individual list item can't take a
+        // direct PendingIntent, it needs a "fill-in" intent that merges with the template
+        // set via setPendingIntentTemplate() on the ListView itself (done in the provider).
+        views.setOnClickFillInIntent(R.id.widgetItemRoot, android.content.Intent())
+
         return views
     }
 
