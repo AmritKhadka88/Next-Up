@@ -73,4 +73,9 @@ interface TaskDao {
         LIMIT 50
     """)
     fun getUpcomingTasksSync(): List<Task>
+    @Query("SELECT * FROM tasks WHERE isCompleted = 1")
+    suspend fun getCompletedTasks(): List<Task>
+
+    @Query("DELETE FROM tasks WHERE isCompleted = 1")
+    suspend fun deleteCompleted()
 }
