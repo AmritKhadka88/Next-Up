@@ -40,8 +40,14 @@ class MainActivity : AppCompatActivity() {
             tab.text = tabTitles[position]
         }.attach()
 
-        findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
-            QuickAddBottomSheet().show(supportFragmentManager, "quick_add")
+        findViewById<FloatingActionButton>(R.id.fabAdd).apply {
+            setOnClickListener {
+                QuickAddBottomSheet().show(supportFragmentManager, "quick_add")
+            }
+            setOnLongClickListener {
+                startActivity(Intent(this@MainActivity, com.nextup.app.voice.VoiceNoteActivity::class.java))
+                true
+            }
         }
     }
 
