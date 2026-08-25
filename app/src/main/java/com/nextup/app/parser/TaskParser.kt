@@ -20,9 +20,6 @@ data class ParsedTaskResult(
     val isDailyTask: Boolean,
     val ambiguousPriorityPhrase: String? = null,
     val ambiguousSuggestedPriority: Priority? = null,
-    /** True when nothing in the text looked like a date/time even though the wording
-     *  suggests the user meant to specify one — a signal the UI can use to offer teaching a rule. */
-    val possiblyMissingDateTime: Boolean = false,
     /** Which learned rule (if any) actually fired during this parse, so its usage stats can be updated. */
     val usedRulePhrase: String? = null
 ) {
@@ -69,13 +66,6 @@ data class ParsedTaskResult(
 }
 
 object TaskParser {
-
-    // Heuristic trigger words: if any of these show up but no date/time got extracted,
-    // the sentence probably meant to specify a time in wording the app doesn't know yet.
-    private val temporalHintRegex = Regex(
-        """\b(now|today|tomorrow|tonight|later|next|after|before|hour|minute|second|day|week|month|year|morning|evening|night|noon|midnight|am|pm)\b""",
-        RegexOption.IGNORE_CASE
-    )
 
     private fun wordToPriority(word: String): Priority = when (word.lowercase()) {
         "high" -> Priority.HIGH
@@ -249,8 +239,6 @@ object TaskParser {
 
         if (title.isBlank()) title = rawInput.trim()
 
-        val possiblyMissing = !hasDateOrTime && temporalHintRegex.containsMatchIn(rawInput)
-
         return ParsedTaskResult(
             title = title,
             priority = priority,
@@ -263,7 +251,6 @@ object TaskParser {
             isDailyTask = isDailyTask,
             ambiguousPriorityPhrase = ambiguousPhrase,
             ambiguousSuggestedPriority = ambiguousPriority,
-            possiblyMissingDateTime = possiblyMissing,
             usedRulePhrase = usedRulePhrase
         )
     }
