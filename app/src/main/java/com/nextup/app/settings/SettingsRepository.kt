@@ -111,6 +111,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_ALARM_SOUND, null)
         set(value) = prefs.edit().putString(KEY_ALARM_SOUND, value).apply()
 
+    /** Name of the chosen TTS voice for voice-note mode, or null to use the system default voice. */
+    var ttsVoiceName: String?
+        get() = prefs.getString(KEY_TTS_VOICE, null)
+        set(value) = prefs.edit().putString(KEY_TTS_VOICE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "nextup_settings"
         private const val KEY_TEXT_COLOR = "text_color"
@@ -128,6 +133,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_WIDGET_BG_ALPHA = "widget_bg_alpha"
         private const val KEY_WIDGET_TASK_COUNT = "widget_task_count"
         private const val KEY_ALARM_SOUND = "alarm_sound_uri"
+        private const val KEY_TTS_VOICE = "tts_voice_name"
 
         /** A small curated palette for the color picker dialog — keeps the UI simple on mobile. */
         val PRESET_COLORS = listOf(

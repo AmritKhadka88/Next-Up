@@ -19,6 +19,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var settings: SettingsRepository
     private lateinit var fontStatusView: TextView
     private lateinit var alarmSoundStatusView: TextView
+    private lateinit var voiceStatusView: TextView
 
     private val fontPickerLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -42,6 +43,7 @@ class SettingsActivity : AppCompatActivity() {
         settings = SettingsRepository(this)
         fontStatusView = findViewById(R.id.textCustomFontStatus)
         alarmSoundStatusView = findViewById(R.id.textAlarmSoundStatus)
+        voiceStatusView = findViewById(R.id.textVoiceStatus)
 
         setSwatch(R.id.swatchTextColor, settings.textColor)
         setSwatch(R.id.swatchBackgroundColor, settings.backgroundColor)
@@ -118,6 +120,14 @@ class SettingsActivity : AppCompatActivity() {
         }
         updateAlarmSoundStatus()
 
+        findViewById<LinearLayout>(R.id.rowVoice).setOnClickListener {
+            VoicePickerDialog.show(this, settings.ttsVoiceName) { voice ->
+                settings.ttsVoiceName = voice.name
+                updateVoiceStatus()
+            }
+        }
+        updateVoiceStatus()
+
         findViewById<LinearLayout>(R.id.rowResetDefaults).setOnClickListener {
             getSharedPreferences("nextup_settings", MODE_PRIVATE).edit().clear().apply()
             settings.customFontPath = null
@@ -191,5 +201,10 @@ class SettingsActivity : AppCompatActivity() {
                 "Custom sound"
             }
         }
+    }
+
+    private fun updateVoiceStatus() {
+        val name = settings.ttsVoiceName
+        voiceStatusView.text = name?.replace(Regex("""[_\-.]"""), " ")?.trim() ?: "System default"
     }
 }
