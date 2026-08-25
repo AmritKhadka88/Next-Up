@@ -18,6 +18,12 @@
     <string name="highlight_color">Calendar highlight color</string>
     <string name="font">Font</string>
     <string name="import_font_file">Import font file (.ttf / .otf)</string>
+
+    <string name="section_appearance">Appearance</string>
+    <string name="section_priority_colors">Priority colors</string>
+    <string name="section_alarms">Alarms</string>
+    <string name="section_more">More</string>
+    <string name="alarm_sound">Alarm sound</string>
     <string name="reset_defaults">Reset to defaults</string>
 
     <string name="task_title">Task title</string>
@@ -31,6 +37,7 @@
 
     <string name="filter">Filter</string>
     <string name="search">Search</string>
+    <string name="clear_completed">Clear completed tasks</string>
 
     <string name="weekday_sun">S</string>
     <string name="weekday_mon">M</string>
