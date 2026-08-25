@@ -30,7 +30,6 @@ class AlarmReceiver : BroadcastReceiver() {
             .setContentText(title)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
             .build()
