@@ -36,6 +36,21 @@
             android:id="@+id/spinnerFont"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/buttonImportFont"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/import_font_file"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/textCustomFontStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#757575"
             android:layout_marginBottom="24dp" />
 
         <Button
