@@ -24,6 +24,9 @@
     <string name="section_alarms">Alarms</string>
     <string name="section_more">More</string>
     <string name="alarm_sound">Alarm sound</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="stop_voice_mode">Stop</string>
+    <string name="voice_launcher_label">Next-Up Voice</string>
     <string name="reset_defaults">Reset to defaults</string>
 
     <string name="task_title">Task title</string>
