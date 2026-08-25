@@ -7,6 +7,8 @@ import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -98,8 +100,27 @@ class MainActivity : AppCompatActivity() {
                 SearchDialog.show(this)
                 return true
             }
+            R.id.action_clear_completed -> {
+                confirmClearCompleted()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun confirmClearCompleted() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Delete completed tasks?")
+            .setMessage("This removes every task currently marked done. This can't be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch {
+                    val dao = com.nextup.app.data.TaskDatabase.getInstance(this@MainActivity).taskDao()
+                    dao.deleteCompleted()
+                    com.nextup.app.widget.WidgetUpdater.refreshAll(this@MainActivity)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private class MainPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
