@@ -2,76 +2,129 @@
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FAFAFA">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingBottom="24dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/settings_title"
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:textStyle="bold"
-            android:layout_marginBottom="20dp" />
+            android:textColor="#212121"
+            android:padding="20dp" />
 
-        <Button android:id="@+id/buttonTextColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/text_color" android:layout_marginBottom="8dp" />
-        <Button android:id="@+id/buttonBackgroundColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/background_color" android:layout_marginBottom="8dp" />
-        <Button android:id="@+id/buttonHighColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/high_priority_color" android:layout_marginBottom="8dp" />
-        <Button android:id="@+id/buttonMediumColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/medium_priority_color" android:layout_marginBottom="8dp" />
-        <Button android:id="@+id/buttonNormalColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/normal_priority_color" android:layout_marginBottom="8dp" />
-        <Button android:id="@+id/buttonHighlightColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/highlight_color" android:layout_marginBottom="20dp" />
+        <!-- APPEARANCE -->
+        <TextView style="@style/SettingsSectionHeader" android:text="@string/section_appearance" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/font"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+        <LinearLayout android:id="@+id/rowTextColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/text_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchTextColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
 
-        <Spinner
-            android:id="@+id/spinnerFont"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp" />
+        <LinearLayout android:id="@+id/rowBackgroundColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/background_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchBackgroundColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
 
-        <Button
-            android:id="@+id/buttonImportFont"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/import_font_file"
-            android:layout_marginBottom="4dp" />
+        <LinearLayout android:id="@+id/rowFont" style="@style/SettingsRow" android:orientation="vertical" android:gravity="start">
+            <TextView style="@style/SettingsRowTitle" android:text="@string/font" />
+            <Spinner
+                android:id="@+id/spinnerFont"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
 
-        <TextView
-            android:id="@+id/textCustomFontStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="#757575"
-            android:layout_marginBottom="24dp" />
+        <LinearLayout android:id="@+id/rowImportFont" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/import_font_file" />
+                <TextView android:id="@+id/textCustomFontStatus" style="@style/SettingsRowSubtitle" />
+            </LinearLayout>
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
 
-        <Button
-            android:id="@+id/buttonResetDefaults"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/reset_defaults"
-            android:layout_marginBottom="12dp" />
+        <!-- PRIORITY COLORS -->
+        <TextView style="@style/SettingsSectionHeader" android:text="@string/section_priority_colors" />
 
-        <Button
-            android:id="@+id/buttonWidgetSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/widget_settings_title"
-            android:layout_marginBottom="12dp" />
+        <LinearLayout android:id="@+id/rowHighColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/high_priority_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchHighColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
 
-        <Button
-            android:id="@+id/buttonTeachWords"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/teach_title" />
+        <LinearLayout android:id="@+id/rowMediumColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/medium_priority_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchMediumColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <LinearLayout android:id="@+id/rowNormalColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/normal_priority_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchNormalColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <LinearLayout android:id="@+id/rowHighlightColor" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/highlight_color" />
+            </LinearLayout>
+            <View android:id="@+id/swatchHighlightColor" style="@style/SettingsSwatch" />
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <!-- ALARMS -->
+        <TextView style="@style/SettingsSectionHeader" android:text="@string/section_alarms" />
+
+        <LinearLayout android:id="@+id/rowAlarmSound" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/alarm_sound" />
+                <TextView android:id="@+id/textAlarmSoundStatus" style="@style/SettingsRowSubtitle" />
+            </LinearLayout>
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <!-- MORE -->
+        <TextView style="@style/SettingsSectionHeader" android:text="@string/section_more" />
+
+        <LinearLayout android:id="@+id/rowWidgetSettings" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/widget_settings_title" />
+            </LinearLayout>
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <LinearLayout android:id="@+id/rowTeachWords" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/teach_title" />
+            </LinearLayout>
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
+        <LinearLayout android:id="@+id/rowResetDefaults" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/reset_defaults" android:textColor="#D32F2F" />
+            </LinearLayout>
+        </LinearLayout>
 
     </LinearLayout>
 
