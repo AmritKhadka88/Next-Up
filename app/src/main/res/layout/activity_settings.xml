@@ -103,6 +103,14 @@
         </LinearLayout>
         <View style="@style/SettingsDivider" />
 
+        <LinearLayout android:id="@+id/rowVoice" style="@style/SettingsRow">
+            <LinearLayout style="@style/SettingsRowTextContainer">
+                <TextView style="@style/SettingsRowTitle" android:text="@string/voice_note_voice" />
+                <TextView android:id="@+id/textVoiceStatus" style="@style/SettingsRowSubtitle" />
+            </LinearLayout>
+        </LinearLayout>
+        <View style="@style/SettingsDivider" />
+
         <!-- MORE -->
         <TextView style="@style/SettingsSectionHeader" android:text="@string/section_more" />
 
