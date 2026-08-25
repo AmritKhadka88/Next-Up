@@ -53,6 +53,27 @@ class SettingsRepository(context: Context) {
         get() = FontOption.valueOf(prefs.getString(KEY_FONT, FontOption.DEFAULT.name) ?: FontOption.DEFAULT.name)
         set(value) = prefs.edit().putString(KEY_FONT, value.name).apply()
 
+    /** Path to an imported .ttf/.otf file, or null if using one of the built-in FontOptions. */
+    var customFontPath: String?
+        get() = prefs.getString(KEY_CUSTOM_FONT_PATH, null)
+        set(value) = prefs.edit().putString(KEY_CUSTOM_FONT_PATH, value).apply()
+
+    /** Resolves the actual typeface to use: the imported custom font if one is set and
+     *  still readable, otherwise falls back to the selected built-in FontOption. */
+    fun getTypeface(context: Context): Typeface {
+        customFontPath?.let { path ->
+            val file = java.io.File(path)
+            if (file.exists()) {
+                return try {
+                    Typeface.createFromFile(file)
+                } catch (e: Exception) {
+                    fontOption.toTypeface()
+                }
+            }
+        }
+        return fontOption.toTypeface()
+    }
+
     // --- Widget-specific appearance/content settings ---
 
     var widgetTaskFilter: WidgetTaskFilter
@@ -94,6 +115,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_NORMAL_COLOR = "normal_priority_color"
         private const val KEY_HIGHLIGHT_COLOR = "highlight_color"
         private const val KEY_FONT = "font_option"
+        private const val KEY_CUSTOM_FONT_PATH = "custom_font_path"
         private const val KEY_WIDGET_FILTER = "widget_task_filter"
         private const val KEY_WIDGET_FONT_SIZE = "widget_font_size"
         private const val KEY_WIDGET_FONT_COLOR = "widget_font_color"
