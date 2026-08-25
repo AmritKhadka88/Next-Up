@@ -17,6 +17,7 @@
     <string name="normal_priority_color">Normal priority color</string>
     <string name="highlight_color">Calendar highlight color</string>
     <string name="font">Font</string>
+    <string name="import_font_file">Import font file (.ttf / .otf)</string>
     <string name="reset_defaults">Reset to defaults</string>
 
     <string name="task_title">Task title</string>
