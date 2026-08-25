@@ -106,6 +106,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_WIDGET_TASK_COUNT, 5)
         set(value) = prefs.edit().putInt(KEY_WIDGET_TASK_COUNT, value.coerceIn(1, 20)).apply()
 
+    /** URI string of the user's chosen alarm sound, or null to use the system default alarm sound. */
+    var alarmSoundUri: String?
+        get() = prefs.getString(KEY_ALARM_SOUND, null)
+        set(value) = prefs.edit().putString(KEY_ALARM_SOUND, value).apply()
+
     companion object {
         private const val PREFS_NAME = "nextup_settings"
         private const val KEY_TEXT_COLOR = "text_color"
@@ -122,6 +127,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_WIDGET_BG_COLOR = "widget_bg_color"
         private const val KEY_WIDGET_BG_ALPHA = "widget_bg_alpha"
         private const val KEY_WIDGET_TASK_COUNT = "widget_task_count"
+        private const val KEY_ALARM_SOUND = "alarm_sound_uri"
 
         /** A small curated palette for the color picker dialog — keeps the UI simple on mobile. */
         val PRESET_COLORS = listOf(

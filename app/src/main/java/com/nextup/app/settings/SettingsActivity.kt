@@ -1,19 +1,24 @@
 package com.nextup.app.settings
 
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Bundle
 import android.widget.ArrayAdapter
-import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.nextup.app.R
+import com.nextup.app.alarm.NotificationHelper
 
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var settings: SettingsRepository
     private lateinit var fontStatusView: TextView
+    private lateinit var alarmSoundStatusView: TextView
 
     private val fontPickerLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -22,48 +27,60 @@ class SettingsActivity : AppCompatActivity() {
         importFontFile(uri)
     }
 
+    private val ringtonePickerLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        settings.alarmSoundUri = uri?.toString()
+        NotificationHelper.createChannel(this) // recreate channel so the new sound actually applies
+        updateAlarmSoundStatus()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         settings = SettingsRepository(this)
         fontStatusView = findViewById(R.id.textCustomFontStatus)
+        alarmSoundStatusView = findViewById(R.id.textAlarmSoundStatus)
 
-        findViewById<Button>(R.id.buttonTextColor).setOnClickListener {
+        setSwatch(R.id.swatchTextColor, settings.textColor)
+        setSwatch(R.id.swatchBackgroundColor, settings.backgroundColor)
+        setSwatch(R.id.swatchHighColor, settings.highPriorityColor)
+        setSwatch(R.id.swatchMediumColor, settings.mediumPriorityColor)
+        setSwatch(R.id.swatchNormalColor, settings.normalPriorityColor)
+        setSwatch(R.id.swatchHighlightColor, settings.highlightColor)
+
+        findViewById<LinearLayout>(R.id.rowTextColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.text_color), settings.textColor) {
                 settings.textColor = it
                 recreate()
             }
         }
-
-        findViewById<Button>(R.id.buttonBackgroundColor).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowBackgroundColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.background_color), settings.backgroundColor) {
                 settings.backgroundColor = it
                 recreate()
             }
         }
-
-        findViewById<Button>(R.id.buttonHighColor).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowHighColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.high_priority_color), settings.highPriorityColor) {
                 settings.highPriorityColor = it
                 recreate()
             }
         }
-
-        findViewById<Button>(R.id.buttonMediumColor).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowMediumColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.medium_priority_color), settings.mediumPriorityColor) {
                 settings.mediumPriorityColor = it
                 recreate()
             }
         }
-
-        findViewById<Button>(R.id.buttonNormalColor).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowNormalColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.normal_priority_color), settings.normalPriorityColor) {
                 settings.normalPriorityColor = it
                 recreate()
             }
         }
-
-        findViewById<Button>(R.id.buttonHighlightColor).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowHighlightColor).setOnClickListener {
             ColorPickerDialog.show(this, getString(R.string.highlight_color), settings.highlightColor) {
                 settings.highlightColor = it
                 recreate()
@@ -83,27 +100,46 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<Button>(R.id.buttonImportFont).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowImportFont).setOnClickListener {
             fontPickerLauncher.launch("*/*")
         }
         updateFontStatus()
 
-        findViewById<Button>(R.id.buttonResetDefaults).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowAlarmSound).setOnClickListener {
+            val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                val current = settings.alarmSoundUri?.let { Uri.parse(it) }
+                    ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current)
+            }
+            ringtonePickerLauncher.launch(intent)
+        }
+        updateAlarmSoundStatus()
+
+        findViewById<LinearLayout>(R.id.rowResetDefaults).setOnClickListener {
             getSharedPreferences("nextup_settings", MODE_PRIVATE).edit().clear().apply()
             settings.customFontPath = null
+            NotificationHelper.createChannel(this)
             recreate()
         }
 
-        findViewById<Button>(R.id.buttonWidgetSettings).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowWidgetSettings).setOnClickListener {
             startActivity(android.content.Intent(this, WidgetSettingsActivity::class.java))
         }
 
-        findViewById<Button>(R.id.buttonTeachWords).setOnClickListener {
+        findViewById<LinearLayout>(R.id.rowTeachWords).setOnClickListener {
             startActivity(android.content.Intent(this, com.nextup.app.parser.TeachWordsActivity::class.java))
         }
     }
 
-    private fun importFontFile(uri: android.net.Uri) {
+    private fun setSwatch(viewId: Int, color: Int) {
+        val swatch = findViewById<android.view.View>(viewId)
+        (swatch.background as? GradientDrawable)?.setColor(color)
+    }
+
+    private fun importFontFile(uri: Uri) {
         val name = getFileName(uri)
         if (!name.endsWith(".ttf", ignoreCase = true) && !name.endsWith(".otf", ignoreCase = true)) {
             Toast.makeText(this, "Please pick a .ttf or .otf font file", Toast.LENGTH_LONG).show()
@@ -116,9 +152,7 @@ class SettingsActivity : AppCompatActivity() {
             contentResolver.openInputStream(uri)?.use { input ->
                 destFile.outputStream().use { output -> input.copyTo(output) }
             }
-
-            // Validate it actually loads as a typeface before committing to it.
-            Typeface.createFromFile(destFile)
+            Typeface.createFromFile(destFile) // validates it actually loads before committing
 
             settings.customFontPath = destFile.absolutePath
             Toast.makeText(this, "Font imported: $name", Toast.LENGTH_SHORT).show()
@@ -128,7 +162,7 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun getFileName(uri: android.net.Uri): String {
+    private fun getFileName(uri: Uri): String {
         var name = "font"
         contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
@@ -139,10 +173,23 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun updateFontStatus() {
         val path = settings.customFontPath
-        if (path != null && java.io.File(path).exists()) {
-            fontStatusView.text = "Custom font active — overrides the dropdown above. Reset to defaults to remove it."
+        fontStatusView.text = if (path != null && java.io.File(path).exists()) {
+            "Custom font active — overrides the dropdown above"
         } else {
-            fontStatusView.text = "No custom font imported — using the dropdown selection above."
+            "No custom font imported"
+        }
+    }
+
+    private fun updateAlarmSoundStatus() {
+        val uriString = settings.alarmSoundUri
+        alarmSoundStatusView.text = if (uriString == null) {
+            "System default"
+        } else {
+            try {
+                RingtoneManager.getRingtone(this, Uri.parse(uriString))?.getTitle(this) ?: "Custom sound"
+            } catch (e: Exception) {
+                "Custom sound"
+            }
         }
     }
 }
