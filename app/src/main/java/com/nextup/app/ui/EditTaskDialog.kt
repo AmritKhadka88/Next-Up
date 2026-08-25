@@ -97,6 +97,7 @@ class EditTaskDialog : BottomSheetDialogFragment() {
         deleteButton.setOnClickListener {
             val current = task ?: return@setOnClickListener
             lifecycleScope.launch {
+                com.nextup.app.alarm.AlarmScheduler.cancel(requireContext(), current)
                 dao.delete(current)
                 com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
                 dismiss()
@@ -119,7 +120,11 @@ class EditTaskDialog : BottomSheetDialogFragment() {
             )
 
             lifecycleScope.launch {
+                com.nextup.app.alarm.AlarmScheduler.cancel(requireContext(), current)
                 dao.update(updated)
+                if (updated.hasAlarm) {
+                    com.nextup.app.alarm.AlarmScheduler.schedule(requireContext(), updated)
+                }
                 com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
                 dismiss()
             }

@@ -25,6 +25,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        com.nextup.app.alarm.NotificationHelper.createChannel(this)
+        requestAlarmPermissionsIfNeeded()
+
         viewPager = findViewById(R.id.viewPager)
         tabLayout = findViewById(R.id.tabLayout)
 
@@ -37,6 +40,35 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
             QuickAddBottomSheet().show(supportFragmentManager, "quick_add")
+        }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { /* result not critical to act on here — alarms still schedule either way */ }
+
+    private fun requestAlarmPermissionsIfNeeded() {
+        // Android 13+ requires explicit runtime permission to post notifications at all.
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Android 12+ requires a separate special permission for exact alarms — this can't
+        // be requested inline, it has to send the user to a system settings screen.
+        if (!com.nextup.app.alarm.AlarmScheduler.canScheduleExactAlarms(this)) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Allow exact alarms")
+                .setMessage("For task alarms to fire at the right time, Next-Up needs the \"Alarms & reminders\" permission.")
+                .setPositiveButton("Open settings") { _, _ ->
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Not now", null)
+                .show()
         }
     }
 

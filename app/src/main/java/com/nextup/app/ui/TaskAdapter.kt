@@ -72,8 +72,8 @@ class TaskAdapter(
             val zone = ZoneId.systemDefault()
 
             title.text = task.title
-            title.typeface = settings.fontOption.toTypeface()
-            subtitle.typeface = settings.fontOption.toTypeface()
+            title.typeface = settings.getTypeface(itemView.context)
+            subtitle.typeface = settings.getTypeface(itemView.context)
 
             checkBox.setOnCheckedChangeListener(null)
             checkBox.isChecked = task.isCompleted

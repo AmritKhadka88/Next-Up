@@ -51,6 +51,9 @@ class CalendarFragment : Fragment(R.layout.fragment_calendar) {
             onCompletedChanged = { task, completed ->
                 lifecycleScope.launch {
                     dao.setCompleted(task.id, completed)
+                    if (completed && task.hasAlarm) {
+                        com.nextup.app.alarm.AlarmScheduler.cancel(requireContext(), task)
+                    }
                     com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
                 }
             },

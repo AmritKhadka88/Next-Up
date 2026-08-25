@@ -94,6 +94,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         editTextRef = editText
         val sendButton = view.findViewById<ImageButton>(R.id.buttonSend)
         val micButton = view.findViewById<ImageButton>(R.id.buttonMic)
+        val quickAddButton = view.findViewById<ImageButton>(R.id.buttonAddOption)
 
         editText.requestFocus()
         editText.post {
@@ -108,6 +109,15 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             val input = editText.text.toString().trim()
             if (input.isNotBlank()) {
                 handleParsedInput(input, SourceType.MANUAL)
+            }
+        }
+
+        // Green plus: save this task but keep the sheet open, cleared and ready for the
+        // next one — for rapid-fire entry of several tasks in a row.
+        quickAddButton.setOnClickListener {
+            val input = editText.text.toString().trim()
+            if (input.isNotBlank()) {
+                handleParsedInput(input, SourceType.MANUAL, keepOpen = true)
             }
         }
 
@@ -127,7 +137,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun handleParsedInput(input: String, source: SourceType) {
+    private fun handleParsedInput(input: String, source: SourceType, keepOpen: Boolean = false) {
         val excluded = com.nextup.app.parser.LearnedWordsRepository(requireContext()).getExcludedPhrases() +
             keywordHighlighter.getSessionExclusions()
         val rules = com.nextup.app.parser.RuleLibraryRepository(requireContext()).getRules()
@@ -135,11 +145,11 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
         val parsed = TaskParser.parse(input, excluded, rules, fillers)
 
         if (parsed.possiblyMissingDateTime) {
-            showTeachPrompt(input, parsed, source)
+            showTeachPrompt(input, parsed, source, keepOpen)
         } else if (parsed.ambiguousPriorityPhrase != null) {
-            showAmbiguousPriorityDialog(parsed, source)
+            showAmbiguousPriorityDialog(parsed, source, keepOpen)
         } else {
-            saveTask(parsed, source)
+            saveTask(parsed, source, keepOpen)
         }
     }
 
@@ -149,7 +159,7 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
      * teach a rule right here rather than silently saving a task that's probably missing
      * the deadline the person meant to give it.
      */
-    private fun showTeachPrompt(originalInput: String, parsed: ParsedTaskResult, source: SourceType) {
+    private fun showTeachPrompt(originalInput: String, parsed: ParsedTaskResult, source: SourceType, keepOpen: Boolean) {
         val ruleInput = android.widget.EditText(requireContext()).apply {
             hint = "e.g. two days from now = today + 2"
             setPadding(40, 24, 40, 24)
@@ -169,19 +179,19 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
                         keywordHighlighter.getSessionExclusions()
                     val fillers = com.nextup.app.parser.FillerPhraseRepository(requireContext()).getLearnedPhrases().map { it.phrase }
                     val reparsed = TaskParser.parse(originalInput, excluded, repo.getRules(), fillers)
-                    saveTask(reparsed, source)
+                    saveTask(reparsed, source, keepOpen)
                 } else {
-                    saveTask(parsed, source)
+                    saveTask(parsed, source, keepOpen)
                 }
             }
             .setNegativeButton("Just save it") { _, _ ->
-                saveTask(parsed, source)
+                saveTask(parsed, source, keepOpen)
             }
             .setCancelable(false)
             .show()
     }
 
-    private fun showAmbiguousPriorityDialog(parsed: ParsedTaskResult, source: SourceType) {
+    private fun showAmbiguousPriorityDialog(parsed: ParsedTaskResult, source: SourceType, keepOpen: Boolean) {
         val phrase = parsed.ambiguousPriorityPhrase ?: return
         val suggested = parsed.ambiguousSuggestedPriority?.name ?: "priority"
 
@@ -189,29 +199,39 @@ class QuickAddBottomSheet : BottomSheetDialogFragment() {
             .setTitle("Priority or plain text?")
             .setMessage("Found \"$phrase\" in your task. Should this set it as $suggested priority, or keep it as regular text?")
             .setPositiveButton("Set as $suggested") { _, _ ->
-                saveTask(parsed.resolveAmbiguousPriority(applyAsPriority = true), source)
+                saveTask(parsed.resolveAmbiguousPriority(applyAsPriority = true), source, keepOpen)
             }
             .setNegativeButton("Keep as text") { _, _ ->
-                saveTask(parsed.resolveAmbiguousPriority(applyAsPriority = false), source)
+                saveTask(parsed.resolveAmbiguousPriority(applyAsPriority = false), source, keepOpen)
             }
             .setCancelable(false)
             .show()
     }
 
-    private fun saveTask(parsed: ParsedTaskResult, source: SourceType) {
+    private fun saveTask(parsed: ParsedTaskResult, source: SourceType, keepOpen: Boolean = false) {
         val task = parsed.toTask(source = source, overrideDate = prefillDate)
 
         lifecycleScope.launch {
-            TaskDatabase.getInstance(requireContext()).taskDao().insert(task)
+            val newId = TaskDatabase.getInstance(requireContext()).taskDao().insert(task)
             com.nextup.app.widget.WidgetUpdater.refreshAll(requireContext())
+
+            if (task.hasAlarm) {
+                com.nextup.app.alarm.AlarmScheduler.schedule(requireContext(), task.copy(id = newId))
+            }
 
             parsed.usedRulePhrase?.let {
                 com.nextup.app.parser.RuleLibraryRepository(requireContext()).markUsed(it)
             }
             maybeRunStalenessPrune()
 
-            // TODO: if task.hasAlarm, schedule via AlarmManager here using task.dueTime/dueDate.
-            dismiss()
+            if (keepOpen) {
+                // Quick-add-and-continue: clear the box and keep the sheet open for the
+                // next task, instead of closing it.
+                editTextRef.setText("")
+                editTextRef.requestFocus()
+            } else {
+                dismiss()
+            }
         }
     }
 
